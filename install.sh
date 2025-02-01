@@ -56,5 +56,21 @@ if ! sudo systemctl enable --now teamviewerd.service; then
     exit 1
 fi
 
+# Adiciona parâmetros ao /etc/cmdline
+echo "Adicionando parâmetros ao /etc/cmdline..."
+if [ -f /etc/cmdline ]; then
+    # Verifica se os parâmetros já estão presentes
+    if ! grep -q "amdgpu.dcdebugmask=0x10" /etc/cmdline; then
+        echo "amdgpu.dcdebugmask=0x10 quiet splash" | sudo tee -a /etc/cmdline > /dev/null
+        echo "Parâmetros adicionados ao /etc/cmdline."
+    else
+        echo "Os parâmetros já estão presentes no /etc/cmdline."
+    fi
+else
+    # Cria o arquivo /etc/cmdline se ele não existir
+    echo "amdgpu.dcdebugmask=0x10 quiet splash" | sudo tee /etc/cmdline > /dev/null
+    echo "Arquivo /etc/cmdline criado com os parâmetros."
+fi
+
 # Mensagem final
 echo "Instalação concluída!"
