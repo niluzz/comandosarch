@@ -41,7 +41,7 @@ sudo pacman -S --noconfirm \
 
 # Instala pacotes do AUR (yay)
 echo "Instalando pacotes do AUR..."
-paru--noconfirm \
+paru -S --noconfirm \
     google-chrome \
     aic94xx-firmware \
     qed-git ast-firmware \
