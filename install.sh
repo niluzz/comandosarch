@@ -40,7 +40,7 @@ sudo pacman -S --noconfirm \
     gnome-boxes \
     neofetch
 
-# Instala pacotes do AUR (yay)
+# Instala pacotes do AUR (paru)
 echo "Instalando pacotes do AUR..."
 paru -S --noconfirm \
     google-chrome \
@@ -49,7 +49,8 @@ paru -S --noconfirm \
     wd719x-firmware \
     upd72020x-fw \
     onlyoffice-bin \
-    teamviewer
+    teamviewer \
+    extension-manager
 
 # Habilita e inicia o timer do fwupd
 echo "Configurando o fwupd-refresh.timer..."
