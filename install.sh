@@ -37,7 +37,8 @@ sudo pacman -S --noconfirm \
     gnome-firmware \
     amf-headers \
     power-profiles-daemon \
-    gnome-boxes
+    gnome-boxes \
+    neofetch
 
 # Instala pacotes do AUR (yay)
 echo "Instalando pacotes do AUR..."
