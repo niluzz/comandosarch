@@ -51,5 +51,13 @@ paru -S --noconfirm \
     onlyoffice-bin \
     teamviewer
 
+# Habilita e inicia o timer do fwupd
+echo "Configurando o fwupd-refresh.timer..."
+sudo systemctl enable --now fwupd-refresh.timer
+
+# Habilitando bluetooth
+echo " Configurando bluetooth"
+sudo systemctl enable --now bluetooth.service
+
 # Mensagem final
 echo "Instalação concluída!"
