@@ -56,7 +56,7 @@ git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM
 
 # Instala o fzf (Fuzzy Finder)
 echo "Instalando o fzf..."
-git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+git clone --depth 1 https://github.com/junegunn/fzf.git
 ~/.fzf/install --all --no-update-rc
 
 # Configura os plugins no ~/.zshrc
