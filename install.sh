@@ -11,10 +11,10 @@ sudo pacman -S --noconfirm git base-devel
 # Instala pacotes do repositório oficial (pacman)
 echo "Instalando pacotes do repositório oficial..."
 sudo pacman -S --noconfirm \
-    file-roller 
+    file-roller \
     p7zip \
     unrar \
-    unzip 
+    unzip \ 
     pacman-contrib \
     sssd \
     firefox-i18n-pt-br \
