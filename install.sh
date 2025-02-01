@@ -56,27 +56,29 @@ if ! sudo systemctl enable --now teamviewerd.service; then
     exit 1
 fi
 
-# Adiciona parâmetros ao final da linha no /etc/cmdline
-echo "Adicionando parâmetros ao final da linha no /etc/cmdline..."
+# Verifica e completa os parâmetros no /etc/cmdline
+echo "Verificando e completando os parâmetros no /etc/cmdline..."
+
+# Parâmetros desejados
+desired_params="rootfstype=btrfs amdgpu.dcdebugmask=0x10 quiet splash"
 
 if [ -f /etc/cmdline ]; then
     # Lê o conteúdo atual do arquivo
     current_cmdline=$(cat /etc/cmdline)
 
-    # Verifica se os parâmetros já estão presentes
-    if ! echo "$current_cmdline" | grep -q "amdgpu.dcdebugmask=0x10"; then
-        # Adiciona os novos parâmetros ao final da linha
-        new_cmdline="$current_cmdline amdgpu.dcdebugmask=0x10 quiet splash"
+    # Verifica e adiciona os parâmetros que faltam
+    for param in $desired_params; do
+        if ! echo "$current_cmdline" | grep -q "$param"; then
+            current_cmdline="$current_cmdline $param"
+        fi
+    done
 
-        # Sobrescreve o arquivo com o novo conteúdo
-        echo "$new_cmdline" | sudo tee /etc/cmdline > /dev/null
-        echo "Parâmetros adicionados ao final da linha no /etc/cmdline."
-    else
-        echo "Os parâmetros já estão presentes no /etc/cmdline."
-    fi
+    # Sobrescreve o arquivo com o novo conteúdo
+    echo "$current_cmdline" | sudo tee /etc/cmdline > /dev/null
+    echo "Parâmetros verificados e completados no /etc/cmdline."
 else
     # Cria o arquivo /etc/cmdline se ele não existir
-    echo "amdgpu.dcdebugmask=0x10 quiet splash" | sudo tee /etc/cmdline > /dev/null
+    echo "$desired_params" | sudo tee /etc/cmdline > /dev/null
     echo "Arquivo /etc/cmdline criado com os parâmetros."
 fi
 
