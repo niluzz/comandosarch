@@ -93,7 +93,7 @@ fi
 
 # Regenera a imagem do initramfs
 echo "Regenerando a imagem do initramfs..."
-sudo mkinitcpio -P --noconfirm
+sudo mkinitcpio -P
 echo "Imagem do initramfs regenerada com sucesso."
 
 # Mensagem final
