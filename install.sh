@@ -10,8 +10,8 @@ sudo pacman -S --noconfirm git base-devel file-roller p7zip unrar unzip pacman-c
 
 # Instala o paru (AUR helper)
 echo "Instalando o paru..."
-git clone https://aur.archlinux.org/paru.git /tmp/paru
-cd /tmp/paru
+git clone https://aur.archlinux.org/paru.git
+cd paru
 makepkg -si --noconfirm
 
 # Instala pacotes do AUR (paru)
