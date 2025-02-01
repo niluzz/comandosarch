@@ -1,53 +1,43 @@
-# Starship
-#eval "$(starship init zsh)"  # Theme Starship
+# Instala o Oh My Zsh
+echo "Instalando o Oh My Zsh..."
+sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
-# Powerlevel10k
-#source ~/.projects/powerlevel10k/powerlevel10k.zsh-theme
+# Instala o tema Powerlevel10k
+echo "Instalando o tema Powerlevel10k..."
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
 
-#Powerlevel10k
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+# Configura o tema Powerlevel10k no ~/.zshrc
+echo "Configurando o tema Powerlevel10k..."
+sed -i 's/^ZSH_THEME=.*/ZSH_THEME="powerlevel10k\/powerlevel10k"/' ~/.zshrc
 
-# Pywal
-(cat ~/.cache/wal/sequences &)
-cat ~/.cache/wal/sequences
-source ~/.cache/wal/colors-tty.sh
-. $HOME/.cache/wal/colors.sh
+# Instala plugins para ZSH
+echo "Instalando plugins para ZSH..."
 
-# History ZSH
-HISTFILE=~/.zhistory # My zsh history
-HIST_SIVE=1000 # Size history list
-SAVEHIST=500 # Size history list
+# zsh-syntax-highlighting
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 
-# Plugins
-PLUGIN=(zsh-completion)
-source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh     # Plugin Syntax
-source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.plugin.zsh      # Plugin Autosuggestions
+# zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 
-# Configurations
-zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
-zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}' 'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' 'r:|[._-]= r:|=' 'l:|=* r:|=*'
-zstyle :compinstall filename '/home/frank/.zshrc'
+# zsh-history-substring-search
+git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
 
-autoload -Uz compinit
-compinit
+# fzf (Fuzzy Finder)
+echo "Instalando o fzf..."
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install --all --no-update-rc
 
-# Tetris
-autoload -Uz tetriscurses
+# Configura os plugins no ~/.zshrc
+echo "Configurando plugins no ~/.zshrc..."
+sed -i 's/^plugins=.*/plugins=(git zsh-syntax-highlighting zsh-autosuggestions fzf zsh-history-substring-search)/' ~/.zshrc
 
-ZSH_AUTOSUGGEST_USE_ASYNC=true
-ZSH_AUTOSUGGEST_MANUAL_REBIND=true
+# Define o ZSH como shell padrão
+echo "Definindo o ZSH como shell padrão..."
+chsh -s $(which zsh)
 
-CASE_SENSITIVE="false"
-HYPHEN_INSENSITIVE="true"
+# Recarrega o ZSH
+echo "Recarregando o ZSH..."
+exec zsh
 
-# Pyenv
-export PYENV_ROOT="$HOME/.pyenv"
-command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+# Mensagem final
+echo "Instalação e configuração concluídas!"
