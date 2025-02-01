@@ -46,7 +46,8 @@ paru -S --noconfirm \
     aic94xx-firmware \
     qed-git ast-firmware \
     wd719x-firmware \
-    upd72020x-fw
+    upd72020x-fw \
+    onlyoffice-bin 
 
 # Mensagem final
 echo "Instalação concluída!"
