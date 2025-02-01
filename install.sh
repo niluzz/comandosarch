@@ -10,6 +10,12 @@ sudo pacman -S --noconfirm git base-devel file-roller p7zip unrar unzip pacman-c
 ttf-dejavu-nerd ttf-hack-nerd fwupd libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-vdpau showtime papers geary gnome-firmware amf-headers power-profiles-daemon
 neofetch
 
+# Instala o paru (AUR helper)
+echo "Instalando o paru..."
+git clone https://aur.archlinux.org/paru.git /tmp/paru
+cd /tmp/paru
+makepkg -si --noconfirm
+
 # Instala pacotes do AUR (paru)
 echo "Instalando pacotes do AUR..."
 paru -S --noconfirm google-chrome aic94xx-firmware qed-git ast-firmware wd719x-firmware upd72020x-fw onlyoffice-bin teamviewer extension-manager
@@ -51,7 +57,7 @@ git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM
 # Instala o fzf (Fuzzy Finder)
 echo "Instalando o fzf..."
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install
+~/.fzf/install --all --no-update-rc
 
 # Configura os plugins no ~/.zshrc
 echo "Configurando plugins no ~/.zshrc..."
