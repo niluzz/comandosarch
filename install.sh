@@ -72,5 +72,20 @@ else
     echo "Arquivo /etc/cmdline criado com os parâmetros."
 fi
 
+# Adiciona o módulo amdgpu ao /etc/mkinitcpio.conf
+echo "Adicionando o módulo amdgpu ao /etc/mkinitcpio.conf..."
+if grep -q "MODULES=(.*amdgpu.*)" /etc/mkinitcpio.conf; then
+    echo "O módulo amdgpu já está presente no /etc/mkinitcpio.conf."
+else
+    # Adiciona o módulo amdgpu dentro dos parênteses de MODULES
+    sudo sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 amdgpu)/' /etc/mkinitcpio.conf
+    echo "Módulo amdgpu adicionado ao /etc/mkinitcpio.conf."
+fi
+
+# Regenera a imagem do initramfs
+echo "Regenerando a imagem do initramfs..."
+sudo mkinitcpio -P --noconfirm
+echo "Imagem do initramfs regenerada com sucesso."
+
 # Mensagem final
 echo "Instalação concluída!"
