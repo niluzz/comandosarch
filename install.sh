@@ -56,7 +56,7 @@ if ! sudo systemctl enable --now teamviewerd.service; then
     exit 1
 fi
 
-# Verifica e completa os parâmetros no /etc/cmdline
+# Verifica e completa os parâmetros no /etc/cmdline (se o arquivo existir)
 echo "Verificando e completando os parâmetros no /etc/cmdline..."
 
 # Parâmetros desejados
@@ -77,9 +77,7 @@ if [ -f /etc/cmdline ]; then
     echo "$current_cmdline" | sudo tee /etc/cmdline > /dev/null
     echo "Parâmetros verificados e completados no /etc/cmdline."
 else
-    # Cria o arquivo /etc/cmdline se ele não existir
-    echo "$desired_params" | sudo tee /etc/cmdline > /dev/null
-    echo "Arquivo /etc/cmdline criado com os parâmetros."
+    echo "Arquivo /etc/cmdline não encontrado. Nenhuma alteração foi feita."
 fi
 
 # Adiciona o módulo amdgpu ao /etc/mkinitcpio.conf
