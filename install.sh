@@ -47,7 +47,8 @@ paru -S --noconfirm \
     qed-git ast-firmware \
     wd719x-firmware \
     upd72020x-fw \
-    onlyoffice-bin 
+    onlyoffice-bin \
+    teamviewer
 
 # Mensagem final
 echo "Instalação concluída!"
