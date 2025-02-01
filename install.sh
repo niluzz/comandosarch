@@ -53,12 +53,16 @@ paru -S --noconfirm \
     extension-manager
 
 # Habilita e inicia o timer do fwupd
-echo "Configurando o fwupd-refresh.timer..."
+echo "Ativando o fwupd-refresh.timer..."
 sudo systemctl enable --now fwupd-refresh.timer
 
 # Habilitando bluetooth
-echo " Configurando bluetooth"
+echo "Ativando o bluetooth"
 sudo systemctl enable --now bluetooth.service
+
+# Habilitando teamview
+echo "Ativando o teamview"
+sudo systemctl enable --now teamviewerd.service
 
 # Mensagem final
 echo "Instalação concluída!"
