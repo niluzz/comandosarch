@@ -60,7 +60,7 @@ fi
 echo "Adicionando o parâmetro ao /etc/kernel/cmdline..."
 
 # Parâmetro desejado
-desired_param="amdgpu.dcdebugmask=0x10 quiet splash"
+desired_param="amdgpu.dcdebugmask=0x10 quiet splash radeon.si_support=0 radeon.cik_support=0 iommu=pt"
 
 if [ -f /etc/kernel/cmdline ]; then
     # Lê o conteúdo atual do arquivo
