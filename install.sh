@@ -63,8 +63,8 @@ echo "Verificando e completando os parâmetros no /etc/cmdline..."
 desired_params="rootfstype=btrfs amdgpu.dcdebugmask=0x10 quiet splash"
 
 if [ -f /etc/cmdline ]; then
-    # Lê o conteúdo atual do arquivo
-    current_cmdline=$(cat /etc/cmdline)
+    # Lê o conteúdo atual do arquivo, removendo espaços extras e quebras de linha
+    current_cmdline=$(cat /etc/cmdline | xargs)
 
     # Verifica e adiciona os parâmetros que faltam
     for param in $desired_params; do
@@ -72,6 +72,9 @@ if [ -f /etc/cmdline ]; then
             current_cmdline="$current_cmdline $param"
         fi
     done
+
+    # Remove espaços duplicados e formata o conteúdo final
+    current_cmdline=$(echo "$current_cmdline" | xargs)
 
     # Sobrescreve o arquivo com o novo conteúdo
     echo "$current_cmdline" | sudo tee /etc/cmdline > /dev/null
