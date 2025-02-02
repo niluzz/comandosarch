@@ -56,13 +56,13 @@ if ! sudo systemctl enable --now teamviewerd.service; then
     exit 1
 fi
 
-# Adiciona o parâmetro ao /etc/cmdline (se o arquivo existir)
+# Adiciona o parâmetro ao /etc/kernel/cmdline (se o arquivo existir)
 echo "Adicionando o parâmetro ao /etc/kernel/cmdline..."
 
 # Parâmetro desejado
 desired_param="amdgpu.dcdebugmask=0x10 quiet splash"
 
-if [ -f /etc/cmdline ]; then
+if [ -f /etc/kernel/cmdline ]; then
     # Lê o conteúdo atual do arquivo
     current_cmdline=$(cat /etc/kernel/cmdline)
 
@@ -78,7 +78,7 @@ if [ -f /etc/cmdline ]; then
         echo "O parâmetro já está presente no /etc/kernel/cmdline."
     fi
 else
-    echo "Arquivo /etc/cmdline não encontrado. Nenhuma alteração foi feita."
+    echo "Arquivo /etc/kernel/cmdline não encontrado. Nenhuma alteração foi feita."
 fi
 
 # Adiciona o módulo amdgpu ao /etc/mkinitcpio.conf
