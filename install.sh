@@ -56,29 +56,27 @@ if ! sudo systemctl enable --now teamviewerd.service; then
     exit 1
 fi
 
-# Verifica e completa os parâmetros no /etc/cmdline (se o arquivo existir)
-echo "Verificando e completando os parâmetros no /etc/cmdline..."
+# Adiciona o parâmetro ao /etc/cmdline (se o arquivo existir)
+echo "Adicionando o parâmetro ao /etc/cmdline..."
 
-# Parâmetros desejados
-desired_params="rootfstype=btrfs amdgpu.dcdebugmask=0x10 quiet splash"
+# Parâmetro desejado
+desired_param="amdgpu.dcdebugmask=0x10 quiet splash"
 
 if [ -f /etc/cmdline ]; then
-    # Lê o conteúdo atual do arquivo, removendo espaços extras e quebras de linha
-    current_cmdline=$(cat /etc/cmdline | xargs)
+    # Lê o conteúdo atual do arquivo
+    current_cmdline=$(cat /etc/cmdline)
 
-    # Verifica e adiciona os parâmetros que faltam
-    for param in $desired_params; do
-        if ! echo "$current_cmdline" | grep -q "$param"; then
-            current_cmdline="$current_cmdline $param"
-        fi
-    done
+    # Verifica se o parâmetro já está presente
+    if ! echo "$current_cmdline" | grep -q "amdgpu.dcdebugmask=0x10"; then
+        # Adiciona o parâmetro ao final da linha
+        new_cmdline="$current_cmdline $desired_param"
 
-    # Remove espaços duplicados e formata o conteúdo final
-    current_cmdline=$(echo "$current_cmdline" | xargs)
-
-    # Sobrescreve o arquivo com o novo conteúdo
-    echo "$current_cmdline" | sudo tee /etc/cmdline > /dev/null
-    echo "Parâmetros verificados e completados no /etc/cmdline."
+        # Sobrescreve o arquivo com o novo conteúdo
+        echo "$new_cmdline" | sudo tee /etc/cmdline > /dev/null
+        echo "Parâmetro adicionado ao /etc/cmdline."
+    else
+        echo "O parâmetro já está presente no /etc/cmdline."
+    fi
 else
     echo "Arquivo /etc/cmdline não encontrado. Nenhuma alteração foi feita."
 fi
