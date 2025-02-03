@@ -74,12 +74,6 @@ if grep -q "HOOKS=(.*kms.*)" /etc/mkinitcpio.conf; then
     echo "kms removido da linha HOOKS no /etc/mkinitcpio.conf."
 fi
 
-# Desabilita o driver nouveau
-if ! grep -q "blacklist nouveau" /etc/modprobe.d/blacklist-nouveau.conf; then
-    echo -e "blacklist nouveau\noptions nouveau modeset=0" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
-    echo "Driver nouveau desabilitado no /etc/modprobe.d/blacklist-nouveau.conf."
-fi
-
 # Regenera a imagem do initramfs
 if ! sudo mkinitcpio -P; then
     echo "Erro ao regenerar a imagem do initramfs."
