@@ -91,7 +91,7 @@ fi
 # Adicionando parâmetros AMDGPU ao kernel
 if [ -f /etc/kernel/cmdline ]; then
     echo "Adicionando parâmetros AMDGPU ao kernel..."
-    desired_param="amdgpu.dcdebugmask=0x10 quiet splash radeon.si_support=0 radeon.cik_support=0 iommu=pt"
+    desired_param="amdgpu.dcdebugmask=0x10 quiet splash iommu=pt"
 
     if ! grep -q "amdgpu.dcdebugmask=0x10" /etc/kernel/cmdline; then
         echo "$desired_param" | sudo tee -a /etc/kernel/cmdline > /dev/null
