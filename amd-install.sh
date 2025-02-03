@@ -60,26 +60,29 @@ if ! sudo mkinitcpio -P; then
     exit 1
 fi
 
-# Adiciona parâmetros ao /etc/kernel/cmdline
-desired_params="amdgpu.dcdebugmask=0x10 quiet splash radeon.si_support=0 radeon.cik_support=0 iommu=pt"
+# Adiciona o parâmetro ao /etc/kernel/cmdline (se o arquivo existir)
+echo "Adicionando o parâmetro ao /etc/kernel/cmdline..."
+
+# Parâmetro desejado
+desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 nouveau.modeset=0 loglevel=3 quiet splash"
+
 if [ -f /etc/kernel/cmdline ]; then
-    current_cmdline=$(cat /etc/kernel/cmdline | xargs)
-    added_params=false
-    for param in $desired_params; do
-        if ! echo "$current_cmdline" | grep -q "$param"; then
-            current_cmdline="$current_cmdline $param"
-            added_params=true
-        fi
-    done
-    current_cmdline=$(echo "$current_cmdline" | xargs)
-    if $added_params; then
-        echo "$current_cmdline" | sudo tee /etc/kernel/cmdline > /dev/null
-        echo "Parâmetros adicionados ao /etc/kernel/cmdline."
+    # Lê o conteúdo atual do arquivo
+    current_cmdline=$(cat /etc/kernel/cmdline)
+
+    # Verifica se o parâmetro já está presente
+    if ! echo "$current_cmdline" | grep -q "nvidia-drm.modeset=1"; then
+        # Adiciona o parâmetro ao final da linha
+        new_cmdline="$current_cmdline $desired_param"
+
+        # Sobrescreve o arquivo com o novo conteúdo
+        echo "$new_cmdline" | sudo tee /etc/kernel/cmdline > /dev/null
+        echo "Parâmetro adicionado ao /etc/kernel/cmdline."
     else
-        echo "Todos os parâmetros já estão presentes no /etc/kernel/cmdline."
+        echo "O parâmetro já está presente no /etc/kernel/cmdline."
     fi
 else
-    echo "Arquivo /etc/cmdline não encontrado. Nenhuma alteração foi feita."
+    echo "Arquivo /etc/kernel/cmdline não encontrado. Nenhuma alteração foi feita."
 fi
 
 # Regenera a imagem do initramfs novamente
