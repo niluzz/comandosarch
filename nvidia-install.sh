@@ -48,19 +48,19 @@ for service in "${services[@]}"; do
     fi
 done
 
-# Configura o /etc/cmdline
+# Configura o /etc/kernel/cmdline
 desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 nouveau.modeset=0 loglevel=3 quiet splash"
-if [ -f /etc/cmdline ]; then
-    current_cmdline=$(cat /etc/cmdline | xargs)
+if [ -f /etc/kernel/cmdline ]; then
+    current_cmdline=$(cat /etc/kernel/cmdline | xargs)
     if ! echo "$current_cmdline" | grep -q "nvidia-drm.modeset=1"; then
         new_cmdline="$current_cmdline $desired_param"
-        echo "$new_cmdline" | sudo tee /etc/cmdline > /dev/null
-        echo "Parâmetro adicionado ao /etc/cmdline."
+        echo "$new_cmdline" | sudo tee /etc/kernel/cmdline > /dev/null
+        echo "Parâmetro adicionado ao /etc/kernel/cmdline."
     else
-        echo "O parâmetro já está presente no /etc/cmdline."
+        echo "O parâmetro já está presente no /etc/kernel/cmdline."
     fi
 else
-    echo "Arquivo /etc/cmdline não encontrado. Nenhuma alteração foi feita."
+    echo "Arquivo /etc/kernel/cmdline não encontrado. Nenhuma alteração foi feita."
 fi
 
 # Configura o /etc/mkinitcpio.conf
