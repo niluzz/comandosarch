@@ -60,7 +60,7 @@ if grep -q "HOOKS=(.*kms.*)" /etc/mkinitcpio.conf; then
 fi
 
 # Regenera a imagem do initramfs
-if ! sudo mkinitcpio -P; then
+if ! sudo mkinitcpio -p linux-zen; then
     echo "Sucesso ao regenerar a imagem do initramfs."
     exit 1
 fi
@@ -102,7 +102,7 @@ else
 fi
 
 # Regenera a imagem do initramfs
-if ! sudo mkinitcpio -P; then
+if ! sudo mkinitcpio -p linux-zen; then
     echo "Sucesso ao regenerar a imagem do initramfs."
     exit 1
 fi
