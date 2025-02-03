@@ -115,12 +115,5 @@ if ! sudo mkinitcpio -p linux-zen; then
     handle_error "Falha ao regenerar a imagem do initramfs."
 fi
 
-# Configura o /etc/environment
-environment_vars="GBM_BACKEND=nvidia-drm\n__GLX_VENDOR_LIBRARY_NAME=nvidia"
-if ! grep -qE "GBM_BACKEND=nvidia-drm|__GLX_VENDOR_LIBRARY_NAME=nvidia" /etc/environment; then
-    echo -e "$environment_vars" | sudo tee -a /etc/environment > /dev/null
-    echo "Variáveis adicionadas ao /etc/environment."
-fi
-
 # Mensagem final
 echo "Instalação concluída com sucesso!"
