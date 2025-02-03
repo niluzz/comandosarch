@@ -20,7 +20,7 @@ sudo pacman -Syyu || handle_error "Falha ao atualizar o sistema."
 
 # Lista de pacotes
 basic_packages=(
-    git base-devel file-roller p7zip unrar unzip pacman-contrib sssd ntfs-3g firefox-i18n-pt-br
+    zsh base-devel file-roller p7zip unrar unzip pacman-contrib sssd ntfs-3g firefox-i18n-pt-br
 )
 
 gui_packages=(
