@@ -49,7 +49,7 @@ for service in "${services[@]}"; do
 done
 
 # Configura o /etc/kernel/cmdline
-desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 nouveau.modeset=0 loglevel=3 quiet splash"
+desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 loglevel=3 quiet splash"
 if [ -f /etc/kernel/cmdline ]; then
     current_cmdline=$(cat /etc/kernel/cmdline | xargs)
     if ! echo "$current_cmdline" | grep -q "nvidia-drm.modeset=1"; then
