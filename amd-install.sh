@@ -21,6 +21,7 @@ sudo pacman -Syu --needed || handle_error "Falha ao atualizar o sistema."
 # Listas de pacotes
 basic_packages=(
     zsh base-devel file-roller p7zip unrar unzip pacman-contrib sssd firefox-i18n-pt-br
+    mesa libva-mesa-driver libva-utils
 )
 
 gui_packages=(
