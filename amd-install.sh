@@ -64,14 +64,14 @@ fi
 echo "Adicionando o parâmetro ao /etc/kernel/cmdline..."
 
 # Parâmetro desejado
-desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 nouveau.modeset=0 loglevel=3 quiet splash"
+desired_param="amdgpu.dcdebugmask=0x10 quiet splash radeon.si_support=0 radeon.cik_support=0 iommu=pt"
 
 if [ -f /etc/kernel/cmdline ]; then
     # Lê o conteúdo atual do arquivo
     current_cmdline=$(cat /etc/kernel/cmdline)
 
     # Verifica se o parâmetro já está presente
-    if ! echo "$current_cmdline" | grep -q "nvidia-drm.modeset=1"; then
+    if ! echo "$current_cmdline" | grep -q "amdgpu.dcdebugmask=0x10"; then
         # Adiciona o parâmetro ao final da linha
         new_cmdline="$current_cmdline $desired_param"
 
