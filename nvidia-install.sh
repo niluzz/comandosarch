@@ -13,7 +13,7 @@ gui_packages="discord telegram-desktop qbittorrent bluez-utils kcalc clamav ttf-
 nvidia_packages="nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader opencl-nvidia cuda clinfo vulkan-tools"
 
 for package_group in "$basic_packages" "$gui_packages" "$nvidia_packages"; do
-    if ! sudo pacman -S --noconfirm $package_group; then
+    if ! sudo pacman -S $package_group; then
         echo "Erro ao instalar pacotes: $package_group"
         exit 1
     fi
