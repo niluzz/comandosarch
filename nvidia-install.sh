@@ -30,8 +30,7 @@ gui_packages=(
 )
 
 nvidia_packages=(
-    nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader 
-    lib32-vulkan-icd-loader opencl-nvidia cuda clinfo vulkan-tools
+    nvidia-utils lib32-nvidia-utils nvidia-settings 
 )
 
 # Instala pacotes usando um loop para evitar falhas gerais
