@@ -60,10 +60,10 @@ if ! sudo mkinitcpio -P; then
     exit 1
 fi
 
-# Adiciona parâmetros ao /etc/cmdline
+# Adiciona parâmetros ao /etc/kernel/cmdline
 desired_params="amdgpu.dcdebugmask=0x10 quiet splash radeon.si_support=0 radeon.cik_support=0 iommu=pt"
-if [ -f /etc/cmdline ]; then
-    current_cmdline=$(cat /etc/cmdline | xargs)
+if [ -f /etc/kernel/cmdline ]; then
+    current_cmdline=$(cat /etc/kernel/cmdline | xargs)
     added_params=false
     for param in $desired_params; do
         if ! echo "$current_cmdline" | grep -q "$param"; then
@@ -73,10 +73,10 @@ if [ -f /etc/cmdline ]; then
     done
     current_cmdline=$(echo "$current_cmdline" | xargs)
     if $added_params; then
-        echo "$current_cmdline" | sudo tee /etc/cmdline > /dev/null
-        echo "Parâmetros adicionados ao /etc/cmdline."
+        echo "$current_cmdline" | sudo tee /etc/kernel/cmdline > /dev/null
+        echo "Parâmetros adicionados ao /etc/kernel/cmdline."
     else
-        echo "Todos os parâmetros já estão presentes no /etc/cmdline."
+        echo "Todos os parâmetros já estão presentes no /etc/kernel/cmdline."
     fi
 else
     echo "Arquivo /etc/cmdline não encontrado. Nenhuma alteração foi feita."
