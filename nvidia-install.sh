@@ -65,37 +65,26 @@ if ! sudo mkinitcpio -p linux-zen; then
     exit 1
 fi
 
-# Verifica e adiciona parâmetros ao /etc/kernel/cmdline (se o arquivo existir)
-echo "Verificando e adicionando parâmetros ao /etc/kernel/cmdline..."
+# Adiciona o parâmetro ao /etc/kernel/cmdline (se o arquivo existir)
+echo "Adicionando o parâmetro ao /etc/kernel/cmdline..."
 
-# Parâmetros desejados
-desired_params="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 loglevel=3 quiet splash"
+# Parâmetro desejado
+desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 nouveau.modeset=0 loglevel=3 quiet splash"
 
 if [ -f /etc/kernel/cmdline ]; then
-    # Lê o conteúdo atual do arquivo, removendo espaços extras e quebras de linha
-    current_cmdline=$(cat /etc/kernel/cmdline | xargs)
+    # Lê o conteúdo atual do arquivo
+    current_cmdline=$(cat /etc/kernel/cmdline)
 
-    # Variável para rastrear se algum parâmetro foi adicionado
-    added_params=false
+    # Verifica se o parâmetro já está presente
+    if ! echo "$current_cmdline" | grep -q "nvidia-drm.modeset=1"; then
+        # Adiciona o parâmetro ao final da linha
+        new_cmdline="$current_cmdline $desired_param"
 
-    # Verifica cada parâmetro desejado
-    for param in $desired_params; do
-        if ! echo "$current_cmdline" | grep -q "$param"; then
-            # Adiciona o parâmetro ausente
-            current_cmdline="$current_cmdline $param"
-            added_params=true
-        fi
-    done
-
-    # Remove espaços duplicados e formata o conteúdo final
-    current_cmdline=$(echo "$current_cmdline" | xargs)
-
-    if $added_params; then
         # Sobrescreve o arquivo com o novo conteúdo
-        echo "$current_cmdline" | sudo tee /etc/kernel/cmdline > /dev/null
-        echo "Parâmetros adicionados ao /etc/kernel/cmdline."
+        echo "$new_cmdline" | sudo tee /etc/kernel/cmdline > /dev/null
+        echo "Parâmetro adicionado ao /etc/kernel/cmdline."
     else
-        echo "Todos os parâmetros já estão presentes no /etc/kernel/cmdline."
+        echo "O parâmetro já está presente no /etc/kernel/cmdline."
     fi
 else
     echo "Arquivo /etc/kernel/cmdline não encontrado. Nenhuma alteração foi feita."
