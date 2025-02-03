@@ -48,6 +48,23 @@ for service in "${services[@]}"; do
     fi
 done
 
+# Configura o /etc/mkinitcpio.conf
+nvidia_modules="nvidia nvidia_modeset nvidia_uvm nvidia_drm"
+if ! grep -q "MODULES=(.*nvidia.*)" /etc/mkinitcpio.conf; then
+    sudo sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 '"$nvidia_modules"')/' /etc/mkinitcpio.conf
+    echo "Módulos da NVIDIA adicionados ao /etc/mkinitcpio.conf."
+fi
+if grep -q "HOOKS=(.*kms.*)" /etc/mkinitcpio.conf; then
+    sudo sed -i 's/\(HOOKS=(.*\)kms\(.*)\)/\1\2/' /etc/mkinitcpio.conf
+    echo "kms removido da linha HOOKS no /etc/mkinitcpio.conf."
+fi
+
+# Regenera a imagem do initramfs
+if ! sudo mkinitcpio -P; then
+    echo "Sucesso ao regenerar a imagem do initramfs."
+    exit 1
+fi
+
 # Configura o /etc/kernel/cmdline
 desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 loglevel=3 quiet splash"
 if [ -f /etc/kernel/cmdline ]; then
@@ -63,20 +80,9 @@ else
     echo "Arquivo /etc/kernel/cmdline não encontrado. Nenhuma alteração foi feita."
 fi
 
-# Configura o /etc/mkinitcpio.conf
-nvidia_modules="nvidia nvidia_modeset nvidia_uvm nvidia_drm"
-if ! grep -q "MODULES=(.*nvidia.*)" /etc/mkinitcpio.conf; then
-    sudo sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 '"$nvidia_modules"')/' /etc/mkinitcpio.conf
-    echo "Módulos da NVIDIA adicionados ao /etc/mkinitcpio.conf."
-fi
-if grep -q "HOOKS=(.*kms.*)" /etc/mkinitcpio.conf; then
-    sudo sed -i 's/\(HOOKS=(.*\)kms\(.*)\)/\1\2/' /etc/mkinitcpio.conf
-    echo "kms removido da linha HOOKS no /etc/mkinitcpio.conf."
-fi
-
 # Regenera a imagem do initramfs
 if ! sudo mkinitcpio -P; then
-    echo "Erro ao regenerar a imagem do initramfs."
+    echo "Sucesso ao regenerar a imagem do initramfs."
     exit 1
 fi
 
