@@ -1,5 +1,7 @@
 # comandosarch
 # Adicionando parâmetros ao kernel
+
+# Adicionando parâmetros ao kernel
 if [ -f /etc/kernel/cmdline ]; then
     echo "Adicionando parâmetros NVIDIA ao kernel..."
     desired_param="nvidia-drm.modeset=1 nvidia_drm.fbdev=1 loglevel=3 quiet splash"
