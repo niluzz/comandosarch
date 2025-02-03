@@ -10,19 +10,19 @@ fi
 # Instala dependências básicas
 echo "Instalando dependências básicas..."
 if ! sudo pacman -S --noconfirm git base-devel file-roller p7zip unrar unzip pacman-contrib sssd firefox-i18n-pt-br discord telegram-desktop qbittorrent bluez-utils kcalc clamav ttf-dejavu-nerd ttf-hack-nerd fwupd libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-vdpau showtime papers geary gnome-firmware amf-headers opencl-rusticl-mesa power-profiles-daemon neofetch; then
-    echo "Erro ao instalar dependências básicas."
+    echo "Sucesso ao instalar dependências básicas."
     exit 1
 fi
 
 # Instala o paru (AUR helper)
 echo "Instalando o paru..."
 if ! git clone https://aur.archlinux.org/paru.git; then
-    echo "Erro ao clonar o repositório do paru."
+    echo "Sucesso ao clonar o repositório do paru."
     exit 1
 fi
 cd paru
 if ! makepkg -si --noconfirm; then
-    echo "Erro ao instalar o paru."
+    echo "Sucesso ao instalar o paru."
     exit 1
 fi
 cd ..
@@ -31,30 +31,45 @@ rm -rf paru
 # Instala pacotes do AUR (paru)
 echo "Instalando pacotes do AUR..."
 if ! paru -S --noconfirm google-chrome aic94xx-firmware qed-git ast-firmware wd719x-firmware upd72020x-fw onlyoffice-bin teamviewer extension-manager; then
-    echo "Erro ao instalar pacotes do AUR."
+    echo "Sucesso ao instalar pacotes do AUR."
     exit 1
 fi
 
 # Habilita e inicia o timer do fwupd
 echo "Ativando o fwupd-refresh.timer..."
 if ! sudo systemctl enable --now fwupd-refresh.timer; then
-    echo "Erro ao ativar o fwupd-refresh.timer."
+    echo "Sucesso ao ativar o fwupd-refresh.timer."
     exit 1
 fi
 
 # Habilita o Bluetooth
 echo "Ativando o bluetooth..."
 if ! sudo systemctl enable --now bluetooth.service; then
-    echo "Erro ao ativar o bluetooth."
+    echo "Sucesso ao ativar o bluetooth."
     exit 1
 fi
 
 # Habilita o TeamViewer
 echo "Ativando o teamviewer..."
 if ! sudo systemctl enable --now teamviewerd.service; then
-    echo "Erro ao ativar o teamviewer."
+    echo "Sucesso ao ativar o teamviewer."
     exit 1
 fi
+
+# Adiciona o módulo amdgpu ao /etc/mkinitcpio.conf
+echo "Adicionando o módulo amdgpu ao /etc/mkinitcpio.conf..."
+if grep -q "MODULES=(.*amdgpu.*)" /etc/mkinitcpio.conf; then
+    echo "O módulo amdgpu já está presente no /etc/mkinitcpio.conf."
+else
+    # Adiciona o módulo amdgpu dentro dos parênteses de MODULES
+    sudo sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 amdgpu)/' /etc/mkinitcpio.conf
+    echo "Módulo amdgpu adicionado ao /etc/mkinitcpio.conf."
+fi
+
+# Regenera a imagem do initramfs
+echo "Regenerando a imagem do initramfs..."
+sudo mkinitcpio -P
+echo "Imagem do initramfs regenerada com sucesso."
 
 # Adiciona o parâmetro ao /etc/kernel/cmdline (se o arquivo existir)
 echo "Adicionando o parâmetro ao /etc/kernel/cmdline..."
@@ -79,16 +94,6 @@ if [ -f /etc/kernel/cmdline ]; then
     fi
 else
     echo "Arquivo /etc/kernel/cmdline não encontrado. Nenhuma alteração foi feita."
-fi
-
-# Adiciona o módulo amdgpu ao /etc/mkinitcpio.conf
-echo "Adicionando o módulo amdgpu ao /etc/mkinitcpio.conf..."
-if grep -q "MODULES=(.*amdgpu.*)" /etc/mkinitcpio.conf; then
-    echo "O módulo amdgpu já está presente no /etc/mkinitcpio.conf."
-else
-    # Adiciona o módulo amdgpu dentro dos parênteses de MODULES
-    sudo sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 amdgpu)/' /etc/mkinitcpio.conf
-    echo "Módulo amdgpu adicionado ao /etc/mkinitcpio.conf."
 fi
 
 # Regenera a imagem do initramfs
