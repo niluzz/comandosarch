@@ -25,7 +25,7 @@ gui_packages=(
 )
 
 for package_group in "${basic_packages[@]}" "${gui_packages[@]}"; do
-    if ! sudo pacman -S $package_group; then
+    if ! sudo pacman -S --noconfirm $package_group; then
         handle_error "Falha ao instalar pacotes: $package_group"
     fi
 done
