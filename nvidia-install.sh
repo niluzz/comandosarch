@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e  # Interrompe a execução em caso de erro
+set -eu  # Interrompe a execução em caso de erro e variáveis não definidas
 
 # Função para tratamento de erros
 handle_error() {
@@ -35,7 +35,8 @@ nvidia_packages=(
 
 # Instala pacotes usando um loop para evitar falhas gerais
 for package_group in basic_packages gui_packages nvidia_packages; do
-    for package in "${!package_group}"; do
+    declare -n group="$package_group"
+    for package in "${group[@]}"; do
         echo "Instalando $package..."
         sudo pacman -S --needed "$package" || echo "Aviso: Falha ao instalar $package"
     done
@@ -82,15 +83,16 @@ done
 # Modificação segura no /etc/mkinitcpio.conf
 if [ -f /etc/mkinitcpio.conf ]; then
     echo "Configurando NVIDIA no mkinitcpio.conf..."
-    sudo sed -i '/^MODULES=/s/(/(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
+    
+    if ! grep -q 'nvidia' /etc/mkinitcpio.conf; then
+        sudo sed -i '/^MODULES=/s/(/(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
+    fi
+
     sudo sed -i '/^HOOKS=/s/kms//' /etc/mkinitcpio.conf
     sudo mkinitcpio -P || handle_error "Falha ao regenerar initramfs."
 else
     echo "Aviso: /etc/mkinitcpio.conf não encontrado. Pulando configuração da NVIDIA."
 fi
-
-# Regenera initramfs novamente
-sudo mkinitcpio -P || handle_error "Falha ao regenerar initramfs."
 
 # Mensagem final
 echo "✅ Instalação concluída com sucesso!"
