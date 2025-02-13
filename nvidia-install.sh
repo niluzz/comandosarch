@@ -14,12 +14,6 @@ handle_error() {
     exit 1
 }
 
-# Verifica conexão antes de atualizar
-echo "🔄 Verificando conexão com a internet..."
-if ! curl -s --head https://archlinux.org | grep "200 OK" > /dev/null; then
-    handle_error "Sem conexão com a internet. Verifique sua rede."
-fi
-
 # Atualiza o sistema
 echo "⬆️  Atualizando o sistema..."
 pacman -Syyu --noconfirm || handle_error "Falha ao atualizar o sistema."
@@ -48,47 +42,19 @@ for package_group in basic_packages gui_packages nvidia_packages; do
     done
 done
 
-# Verifica se o paru já está instalado
-if ! command -v paru &>/dev/null; then
-    echo "📥 Instalando o paru (AUR helper)..."
-    temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+# Adicionando parâmetros QUIET ao kernel
+if [ -f /etc/kernel/cmdline ]; then
+    echo "Adicionando parâmetros no kernel..."
+    desired_param="quiet splash iommu=pt"
 
-    git clone https://aur.archlinux.org/paru.git "$temp_dir/paru" || handle_error "Falha ao clonar o repositório do paru."
-    
-    cd "$temp_dir/paru"
-    makepkg -si --noconfirm || handle_error "Falha ao instalar o paru."
-    cd -
-else
-    echo "✅ Paru já está instalado. Pulando instalação."
-fi
-
-# Instala pacotes do AUR
-aur_packages=(
-    google-chrome aic94xx-firmware qed-git ast-firmware wd719x-firmware 
-    upd72020x-fw onlyoffice-bin teamviewer extension-manager coolercontrol
-)
-
-for package in "${aur_packages[@]}"; do
-    echo "📦 Instalando pacote do AUR: $package..."
-    paru -S --needed --noconfirm "$package" || echo "⚠️  Aviso: Falha ao instalar $package"
-done
-
-# Habilita e inicia serviços
-services=(
-    fwupd-refresh.timer
-    bluetooth.service
-    teamviewerd.service
-)
-
-for service in "${services[@]}"; do
-    if ! systemctl is-enabled --quiet "$service"; then
-        echo "🔧 Ativando serviço: $service..."
-        systemctl enable --now "$service" || handle_error "Falha ao ativar o serviço $service"
+    if ! grep -q "quiet" /etc/kernel/cmdline; then
+        echo "$desired_param" | sudo tee -a /etc/kernel/cmdline > /dev/null
     else
-        echo "✅ Serviço $service já está ativo."
+        echo "Parâmetros quiet já configurados."
     fi
-done
+else
+    echo "Aviso: /etc/kernel/cmdline não encontrado. Pulando configuração do kernel."
+fi
 
 # Modificação segura no /etc/mkinitcpio.conf
 if [ -f /etc/mkinitcpio.conf ]; then
@@ -99,7 +65,7 @@ if [ -f /etc/mkinitcpio.conf ]; then
     fi
 
     sed -i '/^HOOKS=/s/\bkms\b//' /etc/mkinitcpio.conf
-    mkinitcpio -P || handle_error "Falha ao regenerar initramfs."
+    mkinitcpio -p linux-zen || handle_error "Falha ao regenerar initramfs."
 else
     echo "⚠️  Aviso: /etc/mkinitcpio.conf não encontrado. Pulando configuração da NVIDIA."
 fi
