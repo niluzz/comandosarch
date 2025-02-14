@@ -8,12 +8,6 @@ handle_error() {
     exit 1
 }
 
-# Verifica conexão antes de atualizar
-echo "Verificando conexão com a internet..."
-if ! ping -c 1 archlinux.org &>/dev/null; then
-    handle_error "Sem conexão com a internet. Verifique sua rede."
-fi
-
 # Atualiza o sistema
 echo "Atualizando o sistema..."
 sudo pacman -Syu --needed || handle_error "Falha ao atualizar o sistema."
@@ -25,7 +19,7 @@ basic_packages=(
 )
 
 gui_packages=(
-    discord telegram-desktop qbittorrent bluez-utils kcalc clamav ttf-dejavu-nerd 
+    discord telegram-desktop qbittorrent bluez-utils clamav ttf-dejavu-nerd 
     ttf-hack-nerd fwupd libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau 
     lib32-mesa-vdpau showtime papers geary gnome-firmware amf-headers opencl-rusticl-mesa 
     power-profiles-daemon neofetch
@@ -54,8 +48,7 @@ fi
 
 # Instala pacotes do AUR
 aur_packages=(
-    google-chrome aic94xx-firmware qed-git ast-firmware wd719x-firmware 
-    upd72020x-fw onlyoffice-bin teamviewer extension-manager
+    google-chrome onlyoffice-bin teamviewer extension-manager
 )
 
 for package in "${aur_packages[@]}"; do
