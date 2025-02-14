@@ -9,12 +9,6 @@ handle_error() {
     exit 1
 }
 
-# Verifica conexão antes de atualizar
-echo "🔍 Verificando conexão com a internet..."
-if ! ping -c 1 archlinux.org &>/dev/null; then
-    handle_error "Sem conexão com a internet. Verifique sua rede."
-fi
-
 # Atualiza o sistema
 echo "🔄 Atualizando o sistema..."
 sudo pacman -Syu --noconfirm --needed || handle_error "Falha ao atualizar o sistema."
