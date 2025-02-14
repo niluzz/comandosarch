@@ -31,7 +31,7 @@ gui_packages=(
 )
 
 nvidia_packages=(
-    nvidia-utils lib32-nvidia-utils nvidia-settings 
+    nvidia-utils lib32-nvidia-utils nvidia-settings opencl-nvidia nvidia-utils
 )
 
 # Instala pacotes usando um loop
