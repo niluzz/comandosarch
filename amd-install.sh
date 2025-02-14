@@ -22,7 +22,7 @@ gui_packages=(
     discord telegram-desktop qbittorrent bluez-utils clamav ttf-dejavu-nerd 
     ttf-hack-nerd fwupd libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau 
     lib32-mesa-vdpau showtime papers geary gnome-firmware amf-headers opencl-rusticl-mesa 
-    power-profiles-daemon neofetch
+    power-profiles-daemon neofetch ttf-fira-code
 )
 
 # Instala pacotes do repositório oficial
