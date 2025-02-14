@@ -26,7 +26,7 @@ basic_packages=(
 )
 
 gui_packages=(
-    discord telegram-desktop qbittorrent bluez-utils kcalc clamav ttf-dejavu-nerd 
+    discord telegram-desktop qbittorrent bluez-utils clamav ttf-dejavu-nerd 
     ttf-hack-nerd fwupd libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau 
     lib32-mesa-vdpau showtime papers geary gnome-firmware amf-headers opencl-rusticl-mesa 
     power-profiles-daemon neofetch
@@ -51,8 +51,7 @@ fi
 
 # Instala pacotes do AUR
 aur_packages=(
-    google-chrome aic94xx-firmware qed-git ast-firmware wd719x-firmware 
-    upd72020x-fw onlyoffice-bin teamviewer extension-manager
+    google-chrome onlyoffice-bin teamviewer extension-manager 
 )
 
 echo "📦 Instalando pacotes do AUR..."
