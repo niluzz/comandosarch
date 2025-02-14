@@ -39,6 +39,7 @@ services=(
     fwupd-refresh.timer
     bluetooth.service
     teamviewerd.service
+    jellyfin.service
 )
 
 for service in "${services[@]}"; do
