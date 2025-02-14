@@ -23,8 +23,8 @@ if ! command -v paru &>/dev/null; then
 fi
 
 aur_packages=(
-    google-chrome aic94xx-firmware qed-git ast-firmware wd719x-firmware 
-    onlyoffice-bin teamviewer extension-manager coolercontrol
+    google-chrome onlyoffice-bin teamviewer extension-manager
+    coolercontrol
 )
 
 for package in "${aur_packages[@]}"; do
