@@ -26,8 +26,8 @@ basic_packages=(
 gui_packages=(
     discord telegram-desktop qbittorrent bluez-utils clamav ttf-dejavu-nerd 
     ttf-hack-nerd inter-font fwupd gwenview okular kcalc power-profiles-daemon
-    neofetch ttf-fira-code jellyfin-ffmpeg jellyfin-server jellyfin-web steam
-    goverlay spectacle
+    neofetch ttf-fira-code jellyfin-ffmpeg jellyfin-server jellyfin-web goverlay
+    spectacle steam
 )
 
 nvidia_packages=(
@@ -39,7 +39,7 @@ for package_group in basic_packages gui_packages nvidia_packages; do
     declare -n group="$package_group"
     for package in "${group[@]}"; do
         echo "📦 Instalando $package..."
-        pacman -S --needed "$package" || echo "⚠️  Aviso: Falha ao instalar $package"
+        pacman -S --needed --noconfirm "$package" || echo "⚠️  Aviso: Falha ao instalar $package"
     done
 done
 
