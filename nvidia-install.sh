@@ -27,7 +27,7 @@ gui_packages=(
     discord telegram-desktop qbittorrent bluez-utils clamav ttf-dejavu-nerd 
     ttf-hack-nerd inter-font fwupd showtime papers geary gnome-firmware 
     power-profiles-daemon neofetch ttf-fira-code jellyfin-ffmpeg jellyfin-server
-    jellyfin-web steam goverlay
+    jellyfin-web steam goverlay ibus
 )
 
 nvidia_packages=(
