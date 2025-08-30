@@ -9,7 +9,8 @@ sudo pacman -S --noconfirm \
   git zsh base-devel file-roller p7zip unrar unzip pacman-contrib \
   firefox-i18n-pt-br discord telegram-desktop fwupd showtime papers \
   amf-headers power-profiles-daemon transmission-gtk \
-  ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font
+  ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
+  noto-fonts noto-fonts-emoji
 
 echo ">>> Habilitando serviços..."
 sudo systemctl enable --now fwupd-refresh.timer
