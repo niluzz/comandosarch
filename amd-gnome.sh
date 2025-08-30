@@ -12,10 +12,6 @@ sudo pacman -S --noconfirm \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
   noto-fonts noto-fonts-emoji
 
-echo ">>> Habilitando serviços..."
-sudo systemctl enable --now fwupd-refresh.timer
-sudo systemctl enable --now bluetooth.service
-
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
   git clone https://aur.archlinux.org/paru.git /tmp/paru
@@ -27,7 +23,7 @@ else
 fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
-paru -S --noconfirm google-chrome onlyoffice-bin extension-manager
+paru -S --noconfirm google-chrome onlyoffice-bin extension-manager auto-cpufreq
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
@@ -50,5 +46,10 @@ for param in quiet splash iommu=pt; do
   fi
 done
 sudo mkinitcpio -P
+
+echo ">>> Habilitando serviços..."
+sudo systemctl enable --now fwupd-refresh.timer
+sudo systemctl enable --now bluetooth.service
+sudo systemctl enable --now auto-cpufreq
 
 echo ">>> Instalação concluída com sucesso! 🚀"
