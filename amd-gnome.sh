@@ -10,7 +10,7 @@ sudo pacman -S --noconfirm \
   firefox-i18n-pt-br discord telegram-desktop fwupd showtime papers \
   amf-headers power-profiles-daemon transmission-gtk \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
-  noto-fonts noto-fonts-emoji
+  noto-fonts noto-fonts-emoji ibus
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
