@@ -5,7 +5,7 @@ echo ">>> Atualizando pacotes do sistema..."
 sudo pacman -Syu --noconfirm
 
 echo ">>> Instalando pacotes oficiais..."
-sudo pacman -S --noconfirm \
+sudo pacman -S --needed --noconfirm \
   git zsh base-devel file-roller p7zip unrar unzip pacman-contrib \
   firefox-i18n-pt-br discord telegram-desktop fwupd showtime papers \
   amf-headers power-profiles-daemon transmission-gtk \
@@ -23,11 +23,11 @@ else
 fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
-paru -S --noconfirm google-chrome onlyoffice-bin extension-manager auto-cpufreq
+paru -S --needed --noconfirm google-chrome onlyoffice-bin extension-manager auto-cpufreq
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
-if ! grep -q "amdgpu" "$MKINIT_FILE"; then
+if ! grep -E "^MODULES=.*amdgpu" "$MKINIT_FILE"; then
   sudo sed -i 's/^MODULES=(/MODULES=(amdgpu /' "$MKINIT_FILE"
   echo "Parâmetro 'amdgpu' adicionado em MODULES."
 else
@@ -39,10 +39,8 @@ echo ">>> Verificando e ajustando /etc/kernel/cmdline..."
 CMDLINE_FILE="/etc/kernel/cmdline"
 for param in quiet splash iommu=pt; do
   if ! grep -qw "$param" "$CMDLINE_FILE"; then
-    echo "Adicionando parâmetro: $param"
-    sudo sed -i "s|\$| $param|" "$CMDLINE_FILE"
-  else
-    echo "Parâmetro '$param' já existe no kernel cmdline."
+    sudo sed -i "1s|\$| $param|" "$CMDLINE_FILE"
+    echo "Parâmetro '$param' adicionado ao kernel cmdline."
   fi
 done
 sudo mkinitcpio -P
@@ -50,6 +48,6 @@ sudo mkinitcpio -P
 echo ">>> Habilitando serviços..."
 sudo systemctl enable --now fwupd-refresh.timer
 sudo systemctl enable --now bluetooth.service
-sudo systemctl enable --now auto-cpufreq
+sudo systemctl enable --now auto-cpufreq.service
 
 echo ">>> Instalação concluída com sucesso! 🚀"
