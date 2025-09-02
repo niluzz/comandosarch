@@ -1,43 +1,69 @@
-# Instala o Oh My Zsh
-echo "Instalando o Oh My Zsh..."
-sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+#!/bin/bash
+set -e
 
-# Instala o tema Powerlevel10k
-echo "Instalando o tema Powerlevel10k..."
-git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
+echo ">>> Instalando Zsh..."
+sudo pacman -S --needed --noconfirm zsh curl git
 
-# Configura o tema Powerlevel10k no ~/.zshrc
-echo "Configurando o tema Powerlevel10k..."
-sed -i 's/^ZSH_THEME=.*/ZSH_THEME="powerlevel10k\/powerlevel10k"/' ~/.zshrc
+echo ">>> Instalando Oh My Zsh..."
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+else
+  echo "Oh My Zsh já está instalado."
+fi
 
-# Instala plugins para ZSH
-echo "Instalando plugins para ZSH..."
+ZSH_CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}
 
-# zsh-syntax-highlighting
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+echo ">>> Instalando tema Powerlevel10k..."
+if [ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" ]; then
+  git clone https://github.com/romkatv/powerlevel10k.git $ZSH_CUSTOM/themes/powerlevel10k
+else
+  echo "Powerlevel10k já está instalado."
+fi
 
-# zsh-autosuggestions
-git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+echo ">>> Instalando plugins..."
+# Autosuggestions
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
+  git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
+fi
 
-# zsh-history-substring-search
-git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
+# Syntax Highlighting
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
+fi
 
-# fzf (Fuzzy Finder)
-echo "Instalando o fzf..."
-git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install --all --no-update-rc
+# History Substring Search
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-history-substring-search" ]; then
+  git clone https://github.com/zsh-users/zsh-history-substring-search $ZSH_CUSTOM/plugins/zsh-history-substring-search
+fi
 
-# Configura os plugins no ~/.zshrc
-echo "Configurando plugins no ~/.zshrc..."
-sed -i 's/^plugins=.*/plugins=(git zsh-syntax-highlighting zsh-autosuggestions fzf zsh-history-substring-search)/' ~/.zshrc
+# FZF
+if [ ! -d "$HOME/.fzf" ]; then
+  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  yes | ~/.fzf/install --all
+fi
 
-# Define o ZSH como shell padrão
-echo "Definindo o ZSH como shell padrão..."
-chsh -s $(which zsh)
+echo ">>> Configurando ~/.zshrc..."
+ZSHRC="$HOME/.zshrc"
 
-# Recarrega o ZSH
-echo "Recarregando o ZSH..."
-exec zsh
+# Garantir que o tema esteja configurado
+if grep -q '^ZSH_THEME=' "$ZSHRC"; then
+  sed -i 's|^ZSH_THEME=.*|ZSH_THEME="powerlevel10k/powerlevel10k"|' "$ZSHRC"
+else
+  echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> "$ZSHRC"
+fi
 
-# Mensagem final
-echo "Instalação e configuração concluídas!"
+# Garantir que os plugins estejam configurados
+PLUGINS_LINE='plugins=(git zsh-syntax-highlighting zsh-autosuggestions fzf zsh-history-substring-search)'
+if grep -q '^plugins=' "$ZSHRC"; then
+  sed -i "s|^plugins=.*|$PLUGINS_LINE|" "$ZSHRC"
+else
+  echo "$PLUGINS_LINE" >> "$ZSHRC"
+fi
+
+echo ">>> Definindo Zsh como shell padrão..."
+chsh -s /bin/zsh
+
+echo ">>> Recarregando configurações do Zsh..."
+source "$ZSHRC"
+
+echo ">>> Zsh + Oh My Zsh configurado com sucesso! 🚀"
