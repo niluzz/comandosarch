@@ -10,7 +10,7 @@ sudo pacman -S --needed --noconfirm \
   firefox-i18n-pt-br discord telegram-desktop fwupd showtime papers \
   amf-headers power-profiles-daemon transmission-gtk \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
-  noto-fonts noto-fonts-emoji ibus
+  noto-fonts noto-fonts-emoji ibus mesa-utils
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
@@ -23,7 +23,7 @@ else
 fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
-paru -S --needed --noconfirm google-chrome onlyoffice-bin extension-manager auto-cpufreq
+paru -S --needed --noconfirm google-chrome onlyoffice-bin extension-manager auto-cpufreq mangojuice
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
