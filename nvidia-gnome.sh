@@ -12,7 +12,8 @@ sudo pacman -S --needed --noconfirm \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
   noto-fonts noto-fonts-emoji ibus \
   nvidia nvidia-utils nvidia-settings lib32-nvidia-utils \
-  jellyfin-ffmpeg jellyfin-server jellyfin-web goverlay
+  jellyfin-ffmpeg jellyfin-server jellyfin-web goverlay \
+  mesa-utils
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
@@ -25,7 +26,7 @@ else
 fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
-paru -S --needed --noconfirm google-chrome onlyoffice-bin extension-manager phinger-cursors
+paru -S --needed --noconfirm google-chrome onlyoffice-bin extension-manager phinger-cursors mangojuice 
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
