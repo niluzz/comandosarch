@@ -6,7 +6,8 @@ sudo pacman -S --needed --noconfirm zsh curl git
 
 echo ">>> Instalando Oh My Zsh..."
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  RUNZSH=no CHSH=no sh -c \
+    "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 else
   echo "Oh My Zsh já está instalado."
 fi
@@ -61,9 +62,10 @@ else
 fi
 
 echo ">>> Definindo Zsh como shell padrão..."
-chsh -s /bin/zsh
+chsh -s /bin/zsh "$USER"
 
 echo ">>> Recarregando configurações do Zsh..."
-source "$ZSHRC"
+# o "source" só funciona dentro do zsh, então criamos um aviso
+echo "Para aplicar imediatamente, rode: source ~/.zshrc"
 
 echo ">>> Zsh + Oh My Zsh configurado com sucesso! 🚀"
