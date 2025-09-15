@@ -8,20 +8,20 @@ MKINIT_FILE="/etc/mkinitcpio.conf"
 
 echo "=== Verificando swap atual ==="
 if swapon --show | grep -q "$SWAPFILE"; then
-    echo "Swapfile $SWAPFILE já ativo."
+    echo "Swapfile $SWAPFILE já ativo, pulando criação."
 else
     echo "=== Criando swapfile de ${SWAPSIZE_GB}G em $SWAPFILE (Btrfs, sem CoW) ==="
 
     if [ -f "$SWAPFILE" ]; then
-        echo "Swapfile existe, removendo..."
+        echo "Swapfile existe mas não ativo, ativando..."
         sudo swapoff "$SWAPFILE" || true
-        sudo rm "$SWAPFILE"
+        sudo swapon "$SWAPFILE"
+    else
+        echo "Criando swapfile..."
+        sudo btrfs filesystem mkswapfile --size ${SWAPSIZE_GB}G "$SWAPFILE"
+        sudo chmod 600 "$SWAPFILE"
+        sudo swapon "$SWAPFILE"
     fi
-
-    # Criar swapfile no Btrfs sem CoW
-    sudo btrfs filesystem mkswapfile --size ${SWAPSIZE_GB}G "$SWAPFILE"
-    sudo chmod 600 "$SWAPFILE"
-    sudo swapon "$SWAPFILE"
 
     # Adicionar ao fstab se não existir
     if ! grep -q "$SWAPFILE" /etc/fstab; then
@@ -37,22 +37,27 @@ echo "=== Calculando resume_offset do swapfile ==="
 RESUME_OFFSET=$(sudo filefrag -v "$SWAPFILE" | awk '/ 0:/{gsub("\\.\\.", "", $4); print $4}')
 echo "resume_offset: $RESUME_OFFSET"
 
-echo "=== Atualizando $CMDLINE_FILE ==="
-# Remove qualquer resume antigo
-sudo sed -i 's/resume=[^ ]*//g' "$CMDLINE_FILE"
-sudo sed -i 's/resume_offset=[^ ]*//g' "$CMDLINE_FILE"
+echo "=== Verificando parâmetros de resume no cmdline ==="
+CURRENT_CMDLINE=$(cat "$CMDLINE_FILE")
 
-# Adiciona no final
-echo "resume=$ROOT_DEV resume_offset=$RESUME_OFFSET" | sudo tee -a "$CMDLINE_FILE"
+if [[ "$CURRENT_CMDLINE" == *"resume=$ROOT_DEV"* && "$CURRENT_CMDLINE" == *"resume_offset=$RESUME_OFFSET"* ]]; then
+    echo "Parâmetros resume já configurados corretamente, pulando atualização."
+else
+    echo "Atualizando $CMDLINE_FILE com resume..."
+    sudo sed -i 's/resume=[^ ]*//g' "$CMDLINE_FILE"
+    sudo sed -i 's/resume_offset=[^ ]*//g' "$CMDLINE_FILE"
+    echo "resume=$ROOT_DEV resume_offset=$RESUME_OFFSET" | sudo tee -a "$CMDLINE_FILE"
+fi
 
 echo "=== Verificando hook resume no mkinitcpio.conf ==="
 if ! grep -q "\bresume\b" "$MKINIT_FILE"; then
     echo "Adicionando hook resume no mkinitcpio.conf..."
     sudo sed -i 's/\(HOOKS=(.*\))/\1 resume/' "$MKINIT_FILE"
+    echo "Regenerando initramfs..."
+    sudo mkinitcpio -P
+else
+    echo "Hook resume já presente, pulando."
 fi
-
-echo "=== Regenerando initramfs ==="
-sudo mkinitcpio -P
 
 echo "=== Tudo pronto ==="
 echo "Swapfile: $SWAPFILE"
