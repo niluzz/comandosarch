@@ -1,0 +1,60 @@
+#!/bin/bash
+set -e
+
+SWAPFILE="/swapfile"
+SWAPSIZE_GB=9
+CMDLINE_FILE="/etc/kernel/cmdline"
+MKINIT_FILE="/etc/mkinitcpio.conf"
+
+echo "=== Verificando swap atual ==="
+if swapon --show | grep -q "$SWAPFILE"; then
+    echo "Swapfile $SWAPFILE já ativo."
+else
+    echo "=== Criando swapfile de ${SWAPSIZE_GB}G em $SWAPFILE (Btrfs, sem CoW) ==="
+
+    if [ -f "$SWAPFILE" ]; then
+        echo "Swapfile existe, removendo..."
+        sudo swapoff "$SWAPFILE" || true
+        sudo rm "$SWAPFILE"
+    fi
+
+    # Criar swapfile no Btrfs sem CoW
+    sudo btrfs filesystem mkswapfile --size ${SWAPSIZE_GB}G "$SWAPFILE"
+    sudo chmod 600 "$SWAPFILE"
+    sudo swapon "$SWAPFILE"
+
+    # Adicionar ao fstab se não existir
+    if ! grep -q "$SWAPFILE" /etc/fstab; then
+        echo "$SWAPFILE none swap defaults 0 0" | sudo tee -a /etc/fstab
+    fi
+fi
+
+echo "=== Detectando partição raiz ==="
+ROOT_DEV=$(findmnt -no SOURCE /)
+echo "Partição raiz detectada: $ROOT_DEV"
+
+echo "=== Calculando resume_offset do swapfile ==="
+RESUME_OFFSET=$(sudo filefrag -v "$SWAPFILE" | awk '/ 0:/{gsub("\\.\\.", "", $4); print $4}')
+echo "resume_offset: $RESUME_OFFSET"
+
+echo "=== Atualizando $CMDLINE_FILE ==="
+# Remove qualquer resume antigo
+sudo sed -i 's/resume=[^ ]*//g' "$CMDLINE_FILE"
+sudo sed -i 's/resume_offset=[^ ]*//g' "$CMDLINE_FILE"
+
+# Adiciona no final
+echo "resume=$ROOT_DEV resume_offset=$RESUME_OFFSET" | sudo tee -a "$CMDLINE_FILE"
+
+echo "=== Verificando hook resume no mkinitcpio.conf ==="
+if ! grep -q "\bresume\b" "$MKINIT_FILE"; then
+    echo "Adicionando hook resume no mkinitcpio.conf..."
+    sudo sed -i 's/\(HOOKS=(.*\))/\1 resume/' "$MKINIT_FILE"
+fi
+
+echo "=== Regenerando initramfs ==="
+sudo mkinitcpio -P
+
+echo "=== Tudo pronto ==="
+echo "Swapfile: $SWAPFILE"
+echo "resume=$ROOT_DEV resume_offset=$RESUME_OFFSET"
+echo "Você pode testar a hibernação agora com: sudo systemctl hibernate"
