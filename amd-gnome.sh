@@ -8,9 +8,9 @@ echo ">>> Instalando pacotes oficiais..."
 sudo pacman -S --needed --noconfirm \
   git zsh base-devel file-roller p7zip unrar unzip pacman-contrib \
   firefox-i18n-pt-br discord telegram-desktop fwupd showtime papers \
-  amf-headers power-profiles-daemon transmission-gtk \
+  amf-headers power-profiles-daemon qbittorrent \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
-  noto-fonts noto-fonts-emoji ibus mesa-utils
+  noto-fonts noto-fonts-emoji ibus mesa-utils dialect
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
