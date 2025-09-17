@@ -4,16 +4,36 @@ set -e
 echo ">>> Atualizando pacotes do sistema..."
 sudo pacman -Syu --noconfirm
 
-echo ">>> Instalando pacotes oficiais para NVIDIA..."
+echo ">>> Instalando pacotes oficiais..."
 sudo pacman -S --needed --noconfirm \
-  git zsh base-devel file-roller p7zip unrar unzip pacman-contrib \
-  firefox-i18n-pt-br discord telegram-desktop fwupd showtime papers \
-  power-profiles-daemon qbittorrent \
-  ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd inter-font \
-  noto-fonts noto-fonts-emoji ibus \
-  nvidia nvidia-utils nvidia-settings lib32-nvidia-utils \
-  jellyfin-ffmpeg jellyfin-server jellyfin-web goverlay \
-  mesa-utils
+  # Ferramentas básicas
+  git zsh base-devel pacman-contrib \
+  file-roller p7zip unrar unzip \
+  fwupd power-profiles-daemon mesa-utils \
+  ibus dialect showtime papers \
+  \
+  # Navegadores e comunicação
+  firefox-i18n-pt-br discord telegram-desktop \
+  \
+  # Mídia e multimídia
+  ffmpeg \
+  gstreamer gst-plugins-base gst-plugins-good \
+  gst-plugins-bad gst-plugins-ugly gst-libav \
+  libdvdread libdvdnav libdvdcss \
+  \
+  # Drive NVIDIA
+  nvidia-utils nvidia-settings lib32-nvidia-utils \
+  \
+  # Jellyfin
+  jellyfin-ffmpeg jellyfin-server jellyfin-web\
+  \
+  # Fontes
+  ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd \
+  inter-font noto-fonts noto-fonts-emoji \
+  \
+  # Outros
+  qbittorrent newsflash amf-headers \
+  handbrake
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
