@@ -32,7 +32,7 @@ sudo pacman -S --needed --noconfirm \
   inter-font noto-fonts noto-fonts-emoji \
   \
   # Outros
-  qbittorrent newsflash amf-headers \
+  qbittorrent newsflash amf-headers openrgb \
   handbrake
 
 echo ">>> Instalando Paru (AUR helper)..."
