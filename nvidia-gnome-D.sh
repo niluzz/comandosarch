@@ -46,7 +46,9 @@ else
 fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
-paru -S --needed --noconfirm google-chrome onlyoffice-bin extension-manager phinger-cursors mangojuice 
+paru -S --needed --noconfirm \
+  google-chrome onlyoffice-bin extension-manager \
+  auto-cpufreq mangojuice phinger-cursors 
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
