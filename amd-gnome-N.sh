@@ -5,29 +5,34 @@ echo ">>> Atualizando pacotes do sistema..."
 sudo pacman -Syu --noconfirm
 
 echo ">>> Instalando pacotes oficiais..."
+
+# Ferramentas básicas
 sudo pacman -S --needed --noconfirm \
-  # Ferramentas básicas
   git zsh base-devel pacman-contrib \
   file-roller p7zip unrar unzip \
   fwupd power-profiles-daemon mesa-utils \
-  ibus dialect showtime papers \
-  \
-  # Navegadores e comunicação
-  firefox-i18n-pt-br discord telegram-desktop \
-  \
-  # Mídia e multimídia
+  ibus showtime papers
+
+# Navegadores e comunicação
+sudo pacman -S --needed --noconfirm \
+  firefox-i18n-pt-br discord telegram-desktop
+
+# Mídia e multimídia
+sudo pacman -S --needed --noconfirm \
   ffmpeg \
   gstreamer gst-plugins-base gst-plugins-good \
   gst-plugins-bad gst-plugins-ugly gst-libav \
   libdvdread libdvdnav libdvdcss \
-  \
-  # Fontes
-  ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd \
-  inter-font noto-fonts noto-fonts-emoji \
-  \
-  # Outros
-  qbittorrent newsflash amf-headers dialect \
   handbrake
+
+# Fontes
+sudo pacman -S --needed --noconfirm \
+  ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd \
+  inter-font noto-fonts noto-fonts-emoji
+
+# Outros
+sudo pacman -S --needed --noconfirm \
+  qbittorrent newsflash amf-headers dialect
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
