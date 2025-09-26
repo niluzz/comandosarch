@@ -23,7 +23,7 @@ sudo pacman -S --needed --noconfirm \
   gstreamer gst-plugins-base gst-plugins-good \
   gst-plugins-bad gst-plugins-ugly gst-libav \
   libdvdread libdvdnav libdvdcss \
-  handbrake
+  handbrake ffmpegthumbnailer
 
 # Fontes
 sudo pacman -S --needed --noconfirm \
