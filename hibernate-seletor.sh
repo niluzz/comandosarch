@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script 1: CONFIGURAÇÃO COMPLETA DA HIBERNAÇÃO (COM MELHORIAS E MENU INTERATIVO)
-# Execute este PRIMEIRO, depois REINICIE
+# Script 1: CONFIGURAÇÃO COMPLETA DA HIBERNAÇÃO (COM MENU INTERATIVO E TESTES)
+# Execute este PRIMEIRO, depois REINICIE manualmente
 
 set -e
 
@@ -35,7 +35,7 @@ show_header() {
     echo -e "${MAGENTA}"
     echo "=================================================="
     echo "  SCRIPT 1: CONFIGURAÇÃO COMPLETA DA HIBERNAÇÃO"
-    echo "        COM MENU INTERATIVO"
+    echo "        COM MENU INTERATIVO E TESTES"
     echo "=================================================="
     echo -e "${NC}"
 }
@@ -51,7 +51,7 @@ show_menu() {
     echo "6.  ⏰ Configurar systemd sleep"
     echo "7.  🖥️  Configurar GNOME (se aplicável)"
     echo "8.  🔄 Executar TODAS as configurações acima"
-    echo "9.  🚀 Executar configuração COMPLETA + REINICIAR"
+    echo "9.  🔍 TESTAR configurações aplicadas"
     echo "0.  ❌ Sair"
     echo ""
 }
@@ -396,6 +396,83 @@ configure_gnome() {
     fi
 }
 
+# NOVA FUNÇÃO: Testar configurações aplicadas
+test_configurations() {
+    step "TESTANDO configurações aplicadas..."
+    
+    echo -e "\n${CYAN}=== VERIFICAÇÃO DE CONFIGURAÇÕES ===${NC}"
+    
+    # Teste 1: Verificar hooks do mkinitcpio
+    echo -e "\n${BLUE}1. Verificando mkinitcpio hooks:${NC}"
+    if grep -q "HOOKS=.*resume" /etc/mkinitcpio.conf; then
+        echo -e "   ✅ ${GREEN}Hook 'resume' encontrado${NC}"
+    else
+        echo -e "   ❌ ${RED}Hook 'resume' NÃO encontrado${NC}"
+    fi
+    
+    if grep -q "HOOKS=.*systemd" /etc/mkinitcpio.conf; then
+        echo -e "   ✅ ${GREEN}Hook 'systemd' encontrado${NC}"
+    else
+        echo -e "   ❌ ${RED}Hook 'systemd' NÃO encontrado${NC}"
+    fi
+    
+    # Teste 2: Verificar parâmetros do kernel
+    echo -e "\n${BLUE}2. Verificando parâmetros do kernel:${NC}"
+    if grep -q "resume=" /etc/kernel/cmdline; then
+        echo -e "   ✅ ${GREEN}Parâmetro 'resume' configurado${NC}"
+        grep -o "resume=[^ ]*" /etc/kernel/cmdline
+    else
+        echo -e "   ❌ ${RED}Parâmetro 'resume' NÃO configurado${NC}"
+    fi
+    
+    # Teste 3: Verificar swapfile
+    echo -e "\n${BLUE}3. Verificando swapfile:${NC}"
+    if [[ -f /swapfile ]]; then
+        echo -e "   ✅ ${GREEN}Swapfile encontrado${NC}"
+        local swap_size=$(du -h /swapfile | cut -f1)
+        echo -e "   📊 Tamanho: $swap_size"
+    else
+        echo -e "   ❌ ${RED}Swapfile NÃO encontrado${NC}"
+    fi
+    
+    if swapon --show | grep -q "/swapfile"; then
+        echo -e "   ✅ ${GREEN}Swapfile ativado${NC}"
+    else
+        echo -e "   ❌ ${RED}Swapfile NÃO ativado${NC}"
+    fi
+    
+    # Teste 4: Verificar logind.conf
+    echo -e "\n${BLUE}4. Verificando logind.conf:${NC}"
+    if grep -q "HandleLidSwitch=hibernate" /etc/systemd/logind.conf; then
+        echo -e "   ✅ ${GREEN}Configuração lid switch encontrada${NC}"
+    else
+        echo -e "   ❌ ${RED}Configuração lid switch NÃO encontrada${NC}"
+    fi
+    
+    # Teste 5: Verificar sleep.conf
+    echo -e "\n${BLUE}5. Verificando sleep.conf:${NC}"
+    if grep -q "SuspendThenHibernateDelaySec=20min" /etc/systemd/sleep.conf; then
+        echo -e "   ✅ ${GREEN}SuspendThenHibernate configurado${NC}"
+    else
+        echo -e "   ❌ ${RED}SuspendThenHibernate NÃO configurado${NC}"
+    fi
+    
+    # Teste 6: Verificar suporte do kernel
+    echo -e "\n${BLUE}6. Verificando suporte do kernel:${NC}"
+    if grep -q "disk" /sys/power/state; then
+        echo -e "   ✅ ${GREEN}Kernel suporta hibernação${NC}"
+    else
+        echo -e "   ❌ ${RED}Kernel NÃO suporta hibernação${NC}"
+    fi
+    
+    # Resumo final
+    echo -e "\n${CYAN}=== RESUMO DOS TESTES ===${NC}"
+    echo "Execute o comando abaixo para verificar se a hibernação funciona:"
+    echo -e "  ${YELLOW}systemctl hibernate${NC}"
+    echo ""
+    echo "⚠️  ${YELLOW}IMPORTANTE: Reinicie o sistema antes de testar a hibernação!${NC}"
+}
+
 execute_option() {
     local option=$1
     local option_name=""
@@ -409,7 +486,7 @@ execute_option() {
         6) option_name="Configurar sleep"; configure_systemd_sleep ;;
         7) option_name="Configurar GNOME"; configure_gnome ;;
         8) option_name="TODAS as configurações"; execute_all_configurations ;;
-        9) option_name="Configuração COMPLETA + REINICIAR"; execute_complete_with_reboot ;;
+        9) option_name="TESTAR configurações"; test_configurations ;;
         *) return 1 ;;
     esac
     
@@ -438,22 +515,7 @@ execute_all_configurations() {
     done
 }
 
-execute_complete_with_reboot() {
-    warn "Esta opção executará TODAS as configurações e reiniciará automaticamente!"
-    read -p "Tem certeza que deseja continuar? (s/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-        info "Operação cancelada."
-        return
-    fi
-    
-    execute_all_configurations
-    show_final_instructions true
-}
-
 show_final_instructions() {
-    local auto_reboot=${1:-false}
-    
     echo -e "\n${GREEN}"
     echo "#############################################"
     echo "#         CONFIGURAÇÃO CONCLUÍDA!          #"
@@ -471,41 +533,31 @@ show_final_instructions() {
     echo "✅ ${GREEN}Configurações otimizadas de energia${NC}"
     echo "✅ ${GREEN}RESUME=UUID configurado${NC}"
     
-    if [[ "$auto_reboot" == "true" ]]; then
-        echo -e "\n${YELLOW}⚠️  REINICIANDO AUTOMATICAMENTE EM 15 SEGUNDOS...${NC}"
-        echo "Pressione Ctrl+C para cancelar"
-        for i in {15..1}; do
+    echo -e "\n${YELLOW}=== ⚠️  IMPORTANTE: REINÍCIO NECESSÁRIO ===${NC}"
+    echo "Para que todas as configurações entrem em vigor,"
+    echo "você DEVE reiniciar o sistema manualmente."
+    echo ""
+    echo -e "${GREEN}Comando para reiniciar:${NC}"
+    echo -e "  ${CYAN}reboot${NC}"
+    echo ""
+    echo -e "${GREEN}Após reiniciar, execute:${NC}"
+    echo -e "  ${CYAN}sudo ./testar_hibernacao.sh${NC}"
+    echo ""
+    echo -e "${YELLOW}Deseja reiniciar agora? (s/N)${NC}"
+    read -p "> " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Ss]$ ]]; then
+        warn "Reiniciando em 10 segundos... Ctrl+C para cancelar"
+        for i in {10..1}; do
             echo -ne "Reiniciando em $i segundos...\r"
             sleep 1
         done
         reboot
     else
-        echo -e "\n${CYAN}=== PRÓXIMOS PASSOS ===${NC}"
-        echo "1. ${GREEN}REINICIE O SISTEMA:${NC}"
-        echo "   comando: reboot"
+        info "Execute manualmente quando estiver pronto:"
+        echo -e "  ${CYAN}reboot${NC}"
         echo ""
-        echo "2. ${GREEN}APÓS REINICIAR, execute o Script 2:${NC}"
-        echo "   comando: sudo ./testar_hibernacao.sh"
-        echo ""
-        echo "3. ${GREEN}Teste a nova funcionalidade:${NC}"
-        echo "   - Feche a tampa (suspende)"
-        echo "   - Após 20min, hiberna automaticamente"
-        
-        echo -e "\n${YELLOW}⚠️  IMPORTANTE: Reinicie antes de testar!${NC}"
-        
-        echo -e "\n${YELLOW}Deseja reiniciar agora? (s/N)${NC}"
-        read -p "> " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Ss]$ ]]; then
-            warn "Reiniciando em 10 segundos... Ctrl+C para cancelar"
-            for i in {10..1}; do
-                echo -ne "Reiniciando em $i segundos...\r"
-                sleep 1
-            done
-            reboot
-        else
-            info "Execute manualmente: reboot quando estiver pronto"
-        fi
+        info "Após reiniciar, use a opção 9 para testar as configurações."
     fi
 }
 
@@ -518,7 +570,7 @@ main() {
         choice=$(get_user_choice)
         
         case $choice in
-            1|2|3|4|5|6|7)
+            1|2|3|4|5|6|7|9)
                 execute_option "$choice"
                 echo
                 read -p "Pressione Enter para continuar..."
@@ -526,11 +578,7 @@ main() {
             8)
                 warn "Executando TODAS as configurações..."
                 execute_option "$choice"
-                echo
-                read -p "Pressione Enter para continuar..."
-                ;;
-            9)
-                execute_option "$choice"
+                show_final_instructions
                 break
                 ;;
             0)
