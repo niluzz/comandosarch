@@ -5,3 +5,13 @@
 ./selinux-arch-installer.sh: linha 340: complete_installation: comando não encontrado
 ./selinux-arch-installer.sh: linha 46: log: comando não encontrado
 [ERROR] SELinux não está instalado. Execute o script de instalação primeiro.
+
+which: no sestatus in (/usr/local/sbin:/usr/local/bin:/usr/bin)
+which: no getenforce in (/usr/local/sbin:/usr/local/bin:/usr/bin)
+which: no setenforce in (/usr/local/sbin:/usr/local/bin:/usr/bin)
+which: no semodule in (/usr/local/sbin:/usr/local/bin:/usr/bin)
+total 8
+drwxr-xr-x 1 root root   28 set 27 03:12 .
+drwxr-xr-x 1 root root 3144 set 27 03:14 ..
+-rw-r--r-- 1 root root  609 set 27 03:12 config
+drwxr-xr-x 1 root root   28 set 27 03:12 targeted
