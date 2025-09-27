@@ -417,7 +417,7 @@ configure_gnome() {
     fi
 }
 
-# FUNÇÃO MELHORADA: Testar configurações aplicadas
+# FUNÇÃO CORRIGIDA: Testar configurações aplicadas
 test_configurations() {
     step "TESTANDO configurações aplicadas..."
     
@@ -445,7 +445,8 @@ test_configurations() {
     echo -e "\n${BLUE}2. Verificando parâmetros do kernel:${NC}"
     if grep -q "resume=UUID=" /etc/kernel/cmdline; then
         echo -e "   ✅ ${GREEN}Parâmetro 'resume' configurado${NC}"
-        grep -o "resume=UUID=[^ ]*" /etc/kernel/cmdline
+        local resume_param=$(grep -o "resume=UUID=[^ ]*" /etc/kernel/cmdline)
+        echo -e "   📋 ${CYAN}$resume_param${NC}"
     else
         echo -e "   ❌ ${RED}Parâmetro 'resume' NÃO configurado${NC}"
         all_ok=false
@@ -462,14 +463,14 @@ test_configurations() {
     echo -e "\n${BLUE}3. Verificando swapfile:${NC}"
     if [[ -f /swapfile ]]; then
         echo -e "   ✅ ${GREEN}Swapfile encontrado${NC}"
-        local swap_size=$(du -h /swapfile | cut -f1)
-        echo -e "   📊 Tamanho: $swap_size"
+        local swap_size=$(du -h /swapfile 2>/dev/null | cut -f1 || echo "desconhecido")
+        echo -e "   📊 Tamanho: ${CYAN}$swap_size${NC}"
     else
         echo -e "   ❌ ${RED}Swapfile NÃO encontrado${NC}"
         all_ok=false
     fi
     
-    if swapon --show | grep -q "/swapfile"; then
+    if swapon --show 2>/dev/null | grep -q "/swapfile"; then
         echo -e "   ✅ ${GREEN}Swapfile ativado${NC}"
     else
         echo -e "   ❌ ${RED}Swapfile NÃO ativado${NC}"
@@ -503,7 +504,7 @@ test_configurations() {
         all_ok=false
     fi
     
-    # Resumo final
+    # Resumo final - CORRIGIDO
     echo -e "\n${CYAN}=== RESUMO DOS TESTES ===${NC}"
     if $all_ok; then
         echo -e "✅ ${GREEN}Todas as configurações básicas estão OK!${NC}"
@@ -512,8 +513,8 @@ test_configurations() {
     fi
     
     echo -e "\n${YELLOW}=== PRÓXIMOS PASSOS ===${NC}"
-    echo "1. Reinicie o sistema: ${CYAN}reboot${NC}"
-    echo "2. Após reiniciar, teste a hibernação: ${CYAN}systemctl hibernate${NC}"
+    echo "1. Reinicie o sistema: reboot"
+    echo "2. Após reiniciar, teste a hibernação: systemctl hibernate"
     echo "3. Para suspensão+hibernação automática: feche a tampa e aguarde 20min"
 }
 
@@ -572,24 +573,23 @@ show_final_instructions() {
     done
     
     echo -e "\n${CYAN}=== FUNCIONALIDADES CONFIGURADAS ===${NC}"
-    echo "✅ ${GREEN}SuspendThenHibernateDelaySec=20min${NC}"
+    echo "✅ SuspendThenHibernateDelaySec=20min"
     echo "   - Suspende primeiro, hiberna após 20min"
-    echo "✅ ${GREEN}Configurações otimizadas de energia${NC}"
-    echo "✅ ${GREEN}RESUME=UUID configurado${NC}"
+    echo "✅ Configurações otimizadas de energia"
+    echo "✅ RESUME=UUID configurado"
     
     echo -e "\n${YELLOW}=== ⚠️  IMPORTANTE ===${NC}"
     echo "Para que todas as configurações entrem em vigor,"
     echo "você DEVE reiniciar o sistema manualmente."
     echo ""
-    echo -e "${GREEN}Comando para reiniciar:${NC}"
-    echo -e "  ${CYAN}reboot${NC}"
+    echo "Comando para reiniciar: reboot"
     echo ""
-    echo -e "${GREEN}Após reiniciar:${NC}"
+    echo "Após reiniciar:"
     echo "- Use a opção 9 para testar as configurações"
-    echo "- Execute: ${CYAN}systemctl hibernate${NC} para testar hibernação"
+    echo "- Execute: systemctl hibernate para testar hibernação"
     echo ""
-    echo -e "${BLUE}O sistema NÃO reiniciará automaticamente.${NC}"
-    echo -e "${BLUE}Reinicie manualmente quando for conveniente.${NC}"
+    echo "O sistema NÃO reiniciará automaticamente."
+    echo "Reinicie manualmente quando for conveniente."
 }
 
 main() {
