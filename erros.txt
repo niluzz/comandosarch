@@ -4,3 +4,4 @@
 ./selinux-arch-installer.sh: linha 332: check_system_config: comando não encontrado
 ./selinux-arch-installer.sh: linha 340: complete_installation: comando não encontrado
 ./selinux-arch-installer.sh: linha 46: log: comando não encontrado
+[ERROR] SELinux não está instalado. Execute o script de instalação primeiro.
