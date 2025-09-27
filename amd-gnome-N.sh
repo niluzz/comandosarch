@@ -33,7 +33,8 @@ sudo pacman -S --needed --noconfirm \
 
 # Outros
 sudo pacman -S --needed --noconfirm \
-  qbittorrent newsflash amf-headers dialect
+  qbittorrent newsflash amf-headers dialect \
+  gufw
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
