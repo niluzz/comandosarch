@@ -287,8 +287,9 @@ configure_kernel() {
     return 0
 }
 
+# FUNÇÃO CORRIGIDA: Configurar logind.conf com suas configurações específicas
 configure_systemd_logind() {
-    step "Configurando /etc/systemd/logind.conf (otimizado)..."
+    step "Configurando /etc/systemd/logind.conf (configurações personalizadas)..."
     
     if [[ ! -f /etc/systemd/logind.conf ]]; then
         warn "Arquivo logind.conf não encontrado. Criando..."
@@ -298,51 +299,53 @@ configure_systemd_logind() {
     local backup_file="/etc/systemd/logind.conf.backup.$(date +%Y%m%d-%H%M%S)"
     cp /etc/systemd/logind.conf "$backup_file"
     
-    info "Aplicando configurações otimizadas..."
+    info "Aplicando configurações personalizadas..."
     
     # Limpar configurações existentes (apenas as que vamos modificar)
-    sed -i '/^#/!{/HandlePowerKey/d;/HandleSuspendKey/d;/HandleHibernateKey/d;/HandleLidSwitch/d;/HandleLidSwitchExternalPower/d;/HandleLidSwitchDocked/d;/HoldoffTimeoutSec/d;/IdleAction/d;/IdleActionSec/d;/PowerKeyIgnoreInhibited/d;/SuspendKeyIgnoreInhibited/d;/HibernateKeyIgnoreInhibited/d;/LidSwitchIgnoreInhibited/d}' /etc/systemd/logind.conf
+    sed -i '/^#/!{/HandlePowerKey/d;/HandleSuspendKey/d;/HandleHibernateKey/d;/HandleLidSwitch/d;/HandleLidSwitchExternalPower/d;/HandleLidSwitchDocked/d;/PowerKeyIgnoreInhibited/d;/SuspendKeyIgnoreInhibited/d;/HibernateKeyIgnoreInhibited/d;/LidSwitchIgnoreInhibited/d;/HoldoffTimeoutSec/d;/IdleAction/d;/IdleActionSec/d}' /etc/systemd/logind.conf
     
-    # Adicionar configurações otimizadas
+    # Adicionar configurações personalizadas
     cat >> /etc/systemd/logind.conf << 'EOF'
 
 # =============================================================================
-# CONFIGURAÇÃO OTIMIZADA DE HIBERNAÇÃO - Arch Linux
+# CONFIGURAÇÃO PERSONALIZADA DE HIBERNAÇÃO - Arch Linux
 # Configurado automaticamente por script de hibernação
 # =============================================================================
 
-# 🔋 AÇÕES DE ENERGIA NA BATERIA
-HandlePowerKey=hibernate
-HandleSuspendKey=hibernate
+# 🔋 AÇÕES DE ENERGIA
+HandlePowerKey=poweroff
+HandleSuspendKey=suspend-then-hibernate
 HandleHibernateKey=hibernate
-HandleLidSwitch=hibernate
+HandleLidSwitch=suspend-then-hibernate
 
-# 🔌 AÇÕES DE ENERGIA NA TOMADA
-HandleLidSwitchExternalPower=hibernate
-HandleLidSwitchDocked=hibernate
+# 🔌 AÇÕES NA TOMADA/DOCK
+HandleLidSwitchExternalPower=suspend
+HandleLidSwitchDocked=ignore
 
 # ⏰ TEMPOS DE ESPERA
-HoldoffTimeoutSec=30s
+HoldoffTimeoutSec=10s
 IdleAction=hibernate
-IdleActionSec=60min
+IdleActionSec=30min
 
 # 🔧 COMPORTAMENTO DE INIBIÇÃO
 PowerKeyIgnoreInhibited=no
 SuspendKeyIgnoreInhibited=no
 HibernateKeyIgnoreInhibited=no
-LidSwitchIgnoreInhibited=no
+LidSwitchIgnoreInhibited=yes
 EOF
 
-    success "logind.conf configurado otimizado."
+    success "logind.conf configurado com configurações personalizadas."
     systemctl restart systemd-logind
     systemctl enable systemd-hibernate.service 2>/dev/null || true
     
     return 0
 }
 
+# FUNÇÃO CORRIGIDA: Configurar sleep.conf com suas configurações específicas
 configure_systemd_sleep() {
-    step "Configurando /etc/systemd/sleep.conf..."
+    step "Configurando /etc/systemd/sleep.conf (configurações personalizadas)..."
     
+    # Obter UUID da partição root automaticamente
     local root_uuid=$(findmnt -n -o UUID /)
     
     if [[ ! -f /etc/systemd/sleep.conf ]]; then
@@ -353,40 +356,42 @@ configure_systemd_sleep() {
     local backup_file="/etc/systemd/sleep.conf.backup.$(date +%Y%m%d-%H%M%S)"
     cp /etc/systemd/sleep.conf "$backup_file"
     
-    info "Aplicando configurações de sleep otimizadas..."
+    info "Aplicando configurações de sleep personalizadas..."
     
     # Limpar configurações existentes
-    sed -i '/^#/!{/SuspendThenHibernateDelaySec/d;/HibernateMode/d;/HybridSleepMode/d;/RESUME/d;/AllowSuspend/d;/AllowHibernation/d;/AllowSuspendThenHibernate/d;/AllowHybridSleep/d}' /etc/systemd/sleep.conf
+    sed -i '/^#/!{/AllowSuspend/d;/AllowHibernation/d;/AllowHybridSleep/d;/SuspendState/d;/HybridSleepMode/d;/Resume/d;/HibernateMode/d;/SuspendThenHibernateDelaySec/d}' /etc/systemd/sleep.conf
     
-    # Adicionar configurações
+    # Adicionar configurações personalizadas
     cat >> /etc/systemd/sleep.conf << EOF
 
 # =============================================================================
-# CONFIGURAÇÃO OTIMIZADA DE SLEEP/HIBERNAÇÃO - Arch Linux
+# CONFIGURAÇÃO PERSONALIZADA DE SLEEP/HIBERNAÇÃO - Arch Linux
 # Configurado automaticamente por script de hibernação
 # =============================================================================
 
 [Sleep]
-# ⏰ TEMPO PARA HIBERNAR APÓS SUSPENDER (20 MINUTOS)
-SuspendThenHibernateDelaySec=20min
-
-# 🔧 MÉTODOS DE HIBERNAÇÃO/POWER
-HibernateMode=platform
-HybridSleepMode=suspend
-
-# 💾 DISPOSITIVO DE RESUME (HIBERNAÇÃO)
-RESUME=UUID=${root_uuid}
-
 # 🔋 COMPORTAMENTO DE ENERGIA
 AllowSuspend=yes
 AllowHibernation=yes
-AllowSuspendThenHibernate=yes
 AllowHybridSleep=yes
+
+# 💤 ESTADOS DE SUSPENSÃO
+SuspendState=mem
+HybridSleepMode=suspend
+
+# 💾 DISPOSITIVO DE RESUME (HIBERNAÇÃO) - CONFIGURADO AUTOMATICAMENTE
+Resume=UUID=${root_uuid}
+HibernateMode=platform
+
+# ⏰ TEMPO PARA HIBERNAR APÓS SUSPENDER (10 MINUTOS)
+SuspendThenHibernateDelaySec=10min
 EOF
 
-    success "sleep.conf configurado com:"
-    echo -e "  ${CYAN}SuspendThenHibernateDelaySec=20min${NC}"
-    echo -e "  ${CYAN}RESUME=UUID=${root_uuid}${NC}"
+    success "sleep.conf configurado com configurações personalizadas:"
+    echo -e "  ${CYAN}SuspendThenHibernateDelaySec=10min${NC}"
+    echo -e "  ${CYAN}Resume=UUID=${root_uuid}${NC}"
+    echo -e "  ${CYAN}HandleLidSwitch=suspend-then-hibernate${NC}"
+    
     return 0
 }
 
@@ -479,7 +484,7 @@ test_configurations() {
     
     # Teste 4: Verificar logind.conf
     echo -e "\n${BLUE}4. Verificando logind.conf:${NC}"
-    if grep -q "HandleLidSwitch=hibernate" /etc/systemd/logind.conf; then
+    if grep -q "HandleLidSwitch=suspend-then-hibernate" /etc/systemd/logind.conf; then
         echo -e "   ✅ ${GREEN}Configuração lid switch encontrada${NC}"
     else
         echo -e "   ❌ ${RED}Configuração lid switch NÃO encontrada${NC}"
@@ -488,10 +493,17 @@ test_configurations() {
     
     # Teste 5: Verificar sleep.conf
     echo -e "\n${BLUE}5. Verificando sleep.conf:${NC}"
-    if grep -q "SuspendThenHibernateDelaySec=20min" /etc/systemd/sleep.conf; then
+    if grep -q "SuspendThenHibernateDelaySec=10min" /etc/systemd/sleep.conf; then
         echo -e "   ✅ ${GREEN}SuspendThenHibernate configurado${NC}"
     else
         echo -e "   ❌ ${RED}SuspendThenHibernate NÃO configurado${NC}"
+        all_ok=false
+    fi
+    
+    if grep -q "Resume=UUID=" /etc/systemd/sleep.conf; then
+        echo -e "   ✅ ${GREEN}Resume UUID configurado no sleep.conf${NC}"
+    else
+        echo -e "   ❌ ${RED}Resume UUID NÃO configurado no sleep.conf${NC}"
         all_ok=false
     fi
     
@@ -515,7 +527,7 @@ test_configurations() {
     echo -e "\n${YELLOW}=== PRÓXIMOS PASSOS ===${NC}"
     echo "1. Reinicie o sistema: reboot"
     echo "2. Após reiniciar, teste a hibernação: systemctl hibernate"
-    echo "3. Para suspensão+hibernação automática: feche a tampa e aguarde 20min"
+    echo "3. Para suspensão+hibernação automática: feche a tampa e aguarde 10min"
 }
 
 execute_option() {
@@ -573,10 +585,13 @@ show_final_instructions() {
     done
     
     echo -e "\n${CYAN}=== FUNCIONALIDADES CONFIGURADAS ===${NC}"
-    echo "✅ SuspendThenHibernateDelaySec=20min"
-    echo "   - Suspende primeiro, hiberna após 20min"
-    echo "✅ Configurações otimizadas de energia"
-    echo "✅ RESUME=UUID configurado"
+    echo "✅ SuspendThenHibernateDelaySec=10min"
+    echo "   - Suspende primeiro, hiberna após 10min"
+    echo "✅ HandleLidSwitch=suspend-then-hibernate"
+    echo "   - Fechar tampa: suspende → hiberna em 10min"
+    echo "✅ HandleLidSwitchExternalPower=suspend"
+    echo "   - Na tomada: apenas suspende"
+    echo "✅ Resume=UUID configurado automaticamente"
     
     echo -e "\n${YELLOW}=== ⚠️  IMPORTANTE ===${NC}"
     echo "Para que todas as configurações entrem em vigor,"
@@ -587,6 +602,7 @@ show_final_instructions() {
     echo "Após reiniciar:"
     echo "- Use a opção 9 para testar as configurações"
     echo "- Execute: systemctl hibernate para testar hibernação"
+    echo "- Feche a tampa e aguarde 10min para testar suspensão+hibernação"
     echo ""
     echo "O sistema NÃO reiniciará automaticamente."
     echo "Reinicie manualmente quando for conveniente."
