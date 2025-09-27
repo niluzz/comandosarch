@@ -1,0 +1,6 @@
+./selinux-arch-installer.sh: linha 330: check_root: comando não encontrado
+./selinux-arch-installer.sh: linha 20: log: comando não encontrado
+./selinux-arch-installer.sh: linha 23: log: comando não encontrado
+./selinux-arch-installer.sh: linha 332: check_system_config: comando não encontrado
+./selinux-arch-installer.sh: linha 340: complete_installation: comando não encontrado
+./selinux-arch-installer.sh: linha 46: log: comando não encontrado
