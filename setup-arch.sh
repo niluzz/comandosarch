@@ -49,7 +49,7 @@ initialize_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
         cat > "$CONFIG_FILE" << 'EOF'
 # Arquivo de configuração para pacotes adicionais
-# Adicone pacotes aqui no formato: PACOTES_ADICIONAIS="pacote1 pacote2"
+# Adicione pacotes aqui no formato: PACOTES_ADICIONAIS="pacote1 pacote2"
 
 # Pacotes adicionais do repositório oficial
 PACOTES_ADICIONAIS_OFICIAIS=""
@@ -67,7 +67,7 @@ EOF
 save_config() {
     cat > "$CONFIG_FILE" << EOF
 # Arquivo de configuração para pacotes adicionais
-# Adicone pacotes aqui no formato: PACOTES_ADICIONAIS="pacote1 pacote2"
+# Adicione pacotes aqui no formato: PACOTES_ADICIONAIS="pacote1 pacote2"
 
 # Pacotes adicionais do repositório oficial
 PACOTES_ADICIONAIS_OFICIAIS="$PACOTES_ADICIONAIS_OFICIAIS"
@@ -228,16 +228,35 @@ get_nvidia_aur_packages() {
 }
 
 # =============================================================================
-# INSTALAÇÃO DE PACOTES
+# INSTALAÇÃO DE PACOTES - CORREÇÃO PARU (SEM ROOT)
 # =============================================================================
 
 install_paru() {
     if ! command -v paru &>/dev/null; then
         print_info "Instalando Paru (AUR helper)..."
-        git clone https://aur.archlinux.org/paru.git /tmp/paru
-        cd /tmp/paru
+        
+        # Verificar se estamos como root - CRÍTICO!
+        if [ "$EUID" -eq 0 ]; then
+            print_error "NÃO é possível instalar o Paru como root!"
+            print_error "Execute o script como usuário normal."
+            return 1
+        fi
+        
+        # Criar diretório temporário como usuário normal
+        local temp_dir="/tmp/paru-install-$(id -u)"
+        mkdir -p "$temp_dir"
+        
+        # Clone e instalação como usuário normal
+        git clone https://aur.archlinux.org/paru.git "$temp_dir/paru"
+        cd "$temp_dir/paru"
+        
+        # Compilar e instalar
         makepkg -si --noconfirm
+        
+        # Limpar
         cd -
+        rm -rf "$temp_dir"
+        
         print_success "Paru instalado com sucesso!"
     else
         print_info "Paru já está instalado."
@@ -270,6 +289,13 @@ install_official_packages() {
 
 install_aur_packages() {
     local gpu_type=$1
+    
+    # Verificar se Paru está instalado
+    if ! command -v paru &>/dev/null; then
+        print_error "Paru não está instalado! Instale primeiro."
+        return 1
+    fi
+    
     print_info "Instalando pacotes do AUR..."
     
     # Pacotes base AUR
@@ -285,7 +311,7 @@ install_aur_packages() {
     # Adicionar pacotes personalizados AUR
     aur_packages="$aur_packages $PACOTES_ADICIONAIS_AUR"
     
-    # Instalar pacotes AUR
+    # Instalar pacotes AUR (SEM SUDO - paru gerencia isso)
     paru -S --needed --noconfirm $aur_packages
 }
 
@@ -348,12 +374,18 @@ enable_services() {
     # Serviços comuns
     sudo systemctl enable --now fwupd-refresh.timer
     sudo systemctl enable --now bluetooth.service
-    sudo systemctl enable --now auto-cpufreq.service
+    
+    # Auto-cpufreq (se instalado)
+    if pacman -Q auto-cpufreq &>/dev/null; then
+        sudo systemctl enable --now auto-cpufreq.service
+    fi
     
     # Serviços específicos
     case $gpu_type in
         "nvidia")
-            sudo systemctl enable --now jellyfin.service
+            if pacman -Q jellyfin-server &>/dev/null; then
+                sudo systemctl enable --now jellyfin.service
+            fi
             ;;
     esac
     
@@ -361,7 +393,7 @@ enable_services() {
 }
 
 # =============================================================================
-# INSTALAÇÃO PRINCIPAL
+# INSTALAÇÃO PRINCIPAL - FLUXO CORRIGIDO
 # =============================================================================
 
 run_installation() {
@@ -381,21 +413,43 @@ run_installation() {
     echo "=========================================="
     echo -e "${NC}"
     
-    # Atualizar sistema
+    # Verificar se não é root (CRÍTICO para AUR)
+    if [ "$EUID" -eq 0 ]; then
+        print_error "ERRO CRÍTICO: Não execute a instalação completa como root!"
+        print_error "O Paru e pacotes AUR não podem ser instalados como root."
+        print_error "Execute como usuário normal e use sudo quando necessário."
+        return 1
+    fi
+    
+    # 1. Atualizar sistema (com sudo)
     print_info "Atualizando sistema..."
     sudo pacman -Syu --noconfirm
     
-    # Instalar pacotes
+    # 2. Instalar pacotes oficiais (com sudo)
     install_official_packages "$gpu_type"
-    install_paru
-    install_aur_packages "$gpu_type"
     
-    # Configurar sistema
+    # 3. Instalar Paru (SEM SUDO - como usuário normal)
+    install_paru
+    if [ $? -ne 0 ]; then
+        print_error "Falha na instalação do Paru. Continuando sem AUR..."
+    else
+        # 4. Instalar pacotes AUR (SEM SUDO - paru gerencia)
+        install_aur_packages "$gpu_type"
+    fi
+    
+    # 5. Configurar sistema (com sudo)
     configure_kernel "$gpu_type"
     enable_services "$gpu_type"
     
     print_success "Instalação concluída com sucesso! 🚀"
     echo -e "${YELLOW}GPU configurada: ${gpu_type^^}${NC}"
+    
+    # Verificar se tudo está ok
+    if command -v paru &>/dev/null; then
+        print_success "Paru instalado e funcionando!"
+    else
+        print_warning "Paru não foi instalado. Pacotes AUR não estarão disponíveis."
+    fi
 }
 
 # =============================================================================
@@ -421,10 +475,11 @@ show_main_menu() {
         echo "3. 🚀  Executar instalação completa"
         echo "4. 🔍  Verificar configuração atual"
         echo "5. 🗑️   Limpar pacotes personalizados"
-        echo "6. ❌  Sair"
+        echo "6. 📋  Verificar dependências"
+        echo "7. ❌  Sair"
         echo
         
-        read -p "Selecione uma opção [1-6]: " choice
+        read -p "Selecione uma opção [1-7]: " choice
         
         case $choice in
             1)
@@ -443,6 +498,9 @@ show_main_menu() {
                 clear_custom_packages
                 ;;
             6)
+                check_dependencies
+                ;;
+            7)
                 print_success "Saindo... Até logo! 👋"
                 exit 0
                 ;;
@@ -485,15 +543,63 @@ clear_custom_packages() {
     print_success "Pacotes personalizados limpos!"
 }
 
+check_dependencies() {
+    echo -e "${CYAN}"
+    echo "=========================================="
+    echo "        VERIFICAÇÃO DE DEPENDÊNCIAS"
+    echo "=========================================="
+    echo -e "${NC}"
+    
+    # Verificar se não é root
+    if [ "$EUID" -eq 0 ]; then
+        print_error "❌ Executando como ROOT - Paru não funcionará!"
+    else
+        print_success "✅ Executando como usuário normal"
+    fi
+    
+    # Verificar sudo
+    if command -v sudo &>/dev/null; then
+        print_success "✅ Sudo instalado"
+    else
+        print_error "❌ Sudo não instalado"
+    fi
+    
+    # Verificar git
+    if command -v git &>/dev/null; then
+        print_success "✅ Git instalado"
+    else
+        print_warning "⚠️  Git não instalado - necessário para Paru"
+    fi
+    
+    # Verificar base-devel
+    if pacman -Q base-devel &>/dev/null; then
+        print_success "✅ base-devel instalado"
+    else
+        print_warning "⚠️  base-devel não instalado - necessário para Paru"
+    fi
+    
+    # Verificar Paru
+    if command -v paru &>/dev/null; then
+        print_success "✅ Paru instalado"
+    else
+        print_warning "⚠️  Paru não instalado"
+    fi
+}
+
 # =============================================================================
 # INICIALIZAÇÃO
 # =============================================================================
 
 main() {
-    # Verificar se é root
+    # Verificar se é root (agora apenas aviso, não erro)
     if [ "$EUID" -eq 0 ]; then
-        print_error "Não execute este script como root!"
-        exit 1
+        print_warning "AVISO: Executando como root."
+        print_warning "Recomendado: execute como usuário normal para instalação completa."
+        read -p "Continuar mesmo assim? (s/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+            exit 1
+        fi
     fi
     
     # Verificar se é Arch Linux
