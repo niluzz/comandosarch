@@ -314,7 +314,7 @@ configure_systemd_logind() {
 
 # 🔋 AÇÕES DE ENERGIA
 HandlePowerKey=poweroff
-HandleSuspendKey=suspend-then-hibernate
+HandleSuspendKey=suspend
 HandleHibernateKey=hibernate
 HandleLidSwitch=suspend-then-hibernate
 
@@ -374,6 +374,7 @@ configure_systemd_sleep() {
 AllowSuspend=yes
 AllowHibernation=yes
 AllowHybridSleep=yes
+AllowSuspendThenHibernate=yes
 
 # 💤 ESTADOS DE SUSPENSÃO
 SuspendState=mem
@@ -384,7 +385,9 @@ Resume=UUID=${root_uuid}
 HibernateMode=platform
 
 # ⏰ TEMPO PARA HIBERNAR APÓS SUSPENDER (10 MINUTOS)
-SuspendThenHibernateDelaySec=10min
+SuspendThenHibernateDelaySec=20min
+HibernateDelaySec=60min
+HibernateOnACPower=no
 EOF
 
     success "sleep.conf configurado com configurações personalizadas:"
