@@ -318,7 +318,7 @@ configure_systemd_logind() {
 HandlePowerKey=poweroff
 HandleSuspendKey=suspend
 HandleHibernateKey=hibernate
-HandleLidSwitch=hibernate
+HandleLidSwitch=suspend-then-hibernate
 
 # 🔌 AÇÕES NA TOMADA/DOCK
 HandleLidSwitchExternalPower=suspend
@@ -386,7 +386,8 @@ AllowHybridSleep=yes
 AllowSuspendThenHibernate=yes
 
 # 💤 ESTADOS DE SUSPENSÃO
-SuspendState=mem
+SuspendState=freeze
+SuspendMode=s2idle
 
 # ⏰ TEMPOS CONFIGURADOS
 # Resume UUID configurado APENAS nos parâmetros do kernel
