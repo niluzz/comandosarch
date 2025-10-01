@@ -318,7 +318,7 @@ configure_systemd_logind() {
 HandlePowerKey=poweroff
 HandleSuspendKey=suspend
 HandleHibernateKey=hibernate
-HandleLidSwitch=suspend-then-hibernate
+HandleLidSwitch=hibernate
 
 # 🔌 AÇÕES NA TOMADA/DOCK
 HandleLidSwitchExternalPower=suspend
@@ -375,15 +375,10 @@ configure_systemd_sleep() {
 AllowSuspend=yes
 AllowHibernation=yes
 AllowHybridSleep=yes
-AllowSuspendThenHibernate=yes
 
 # 💤 ESTADOS DE SUSPENSÃO
 SuspendState=mem
 HybridSleepMode=suspend
-
-# 💾 DISPOSITIVO DE RESUME (HIBERNAÇÃO) - CONFIGURADO AUTOMATICAMENTE
-Resume=UUID=${swap_uuid}
-HibernateMode=platform
 
 # ⏰ TEMPO PARA HIBERNAR APÓS SUSPENDER (20 MINUTOS)
 SuspendThenHibernateDelaySec=20min
