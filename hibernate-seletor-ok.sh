@@ -371,7 +371,6 @@ configure_systemd_sleep() {
 # Configurado automaticamente por script de hibernação
 # =============================================================================
 
-[Sleep]
 # 🔋 COMPORTAMENTO DE ENERGIA
 AllowSuspend=yes
 AllowHibernation=yes
@@ -388,7 +387,7 @@ HibernateMode=platform
 
 # ⏰ TEMPO PARA HIBERNAR APÓS SUSPENDER (20 MINUTOS)
 SuspendThenHibernateDelaySec=20min
-HibernateDelaySec=60min
+HibernateDelaySec=30min
 HibernateOnACPower=no
 EOF
 
