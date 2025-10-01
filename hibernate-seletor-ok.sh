@@ -330,25 +330,33 @@ IdleAction=hibernate
 IdleActionSec=30min
 
 # 🔧 COMPORTAMENTO DE INIBIÇÃO
-PowerKeyIgnoreInhibited=no
-SuspendKeyIgnoreInhibited=no
-HibernateKeyIgnoreInhibited=no
+PowerKeyIgnoreInhibited=yes
+SuspendKeyIgnoreInhibited=yes
+HibernateKeyIgnoreInhibited=yes
 LidSwitchIgnoreInhibited=yes
 EOF
 
     success "logind.conf configurado com configurações personalizadas."
+    
+    # Verificar e remover arquivos conflitantes no diretório .d/
+    if [[ -d /etc/systemd/logind.conf.d/ ]]; then
+        for conf_file in /etc/systemd/logind.conf.d/*.conf; do
+            if [[ -f "$conf_file" ]] && grep -q "HandleLidSwitch" "$conf_file"; then
+                warn "Removendo arquivo conflitante: $conf_file"
+                rm -f "$conf_file"
+            fi
+        done
+    fi
+    
     systemctl restart systemd-logind
-    systemctl enable systemd-hibernate.service 2>/dev/null || true
+    success "Service systemd-logind reiniciado."
     
     return 0
 }
 
-# FUNÇÃO CORRIGIDA: Configurar sleep.conf com suas configurações específicas
+# FUNÇÃO CORRIGIDA: Configurar sleep.conf SEM UUID (apenas no kernel)
 configure_systemd_sleep() {
-    step "Configurando /etc/systemd/sleep.conf (configurações personalizadas)..."
-    
-    # Obter UUID da partição swap automaticamente
-    local swap_uuid=$(get_swap_uuid)
+    step "Configurando /etc/systemd/sleep.conf (configurações modernas)..."
     
     if [[ ! -f /etc/systemd/sleep.conf ]]; then
         warn "Arquivo sleep.conf não encontrado. Criando..."
@@ -358,13 +366,13 @@ configure_systemd_sleep() {
     local backup_file="/etc/systemd/sleep.conf.backup.$(date +%Y%m%d-%H%M%S)"
     cp /etc/systemd/sleep.conf "$backup_file"
     
-    info "Aplicando configurações de sleep personalizadas..."
+    info "Aplicando configurações de sleep otimizadas..."
     
-    # Limpar configurações existentes
-    sed -i '/^#/!{/AllowSuspend/d;/AllowHibernation/d;/AllowHybridSleep/d;/SuspendState/d;/HybridSleepMode/d;/Resume/d;/HibernateMode/d;/SuspendThenHibernateDelaySec/d}' /etc/systemd/sleep.conf
+    # Limpar configurações existentes (apenas as relevantes)
+    sed -i '/^#/!{/AllowSuspend/d;/AllowHibernation/d;/AllowHybridSleep/d;/AllowSuspendThenHibernate/d;/SuspendState/d;/SuspendThenHibernateDelay/d;/HibernateDelaySec/d;/HibernateOnACPower/d}' /etc/systemd/sleep.conf
     
-    # Adicionar configurações personalizadas
-    cat >> /etc/systemd/sleep.conf << EOF
+    # Adicionar configurações modernas (SEM UUID - configurado apenas no kernel)
+    cat >> /etc/systemd/sleep.conf << 'EOF'
 
 # =============================================================================
 # CONFIGURAÇÃO PERSONALIZADA DE SLEEP/HIBERNAÇÃO - Arch Linux
@@ -375,21 +383,22 @@ configure_systemd_sleep() {
 AllowSuspend=yes
 AllowHibernation=yes
 AllowHybridSleep=yes
+AllowSuspendThenHibernate=yes
 
 # 💤 ESTADOS DE SUSPENSÃO
 SuspendState=mem
-HybridSleepMode=suspend
 
-# ⏰ TEMPO PARA HIBERNAR APÓS SUSPENDER (20 MINUTOS)
-SuspendThenHibernateDelaySec=20min
+# ⏰ TEMPOS CONFIGURADOS
+# Resume UUID configurado APENAS nos parâmetros do kernel
+SuspendThenHibernateDelay=10min
 HibernateDelaySec=30min
 HibernateOnACPower=no
 EOF
 
-    success "sleep.conf configurado com configurações personalizadas:"
-    echo -e "  ${CYAN}SuspendThenHibernateDelaySec=20min${NC}"
-    echo -e "  ${CYAN}Resume=UUID=${swap_uuid}${NC}"
-    echo -e "  ${CYAN}HandleLidSwitch=suspend-then-hibernate${NC}"
+    success "sleep.conf configurado com configurações modernas."
+    echo -e "  ${CYAN}SuspendThenHibernateDelay=10min${NC}"
+    echo -e "  ${CYAN}HibernateDelaySec=30min${NC}"
+    echo -e "  ${CYAN}Resume UUID configurado apenas no kernel${NC}"
     
     return 0
 }
@@ -413,7 +422,7 @@ configure_gnome() {
         sudo -u "$user" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${user_id}/bus" \
             gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing' 2>/dev/null || true
         
-        success "GNOME configurado com suporte a suspensão+hibernação."
+        success "GNOME configurado com suporte a hibernação."
         return 0
     else
         warn "GNOME não detectado. Pulando..."
@@ -428,6 +437,7 @@ test_configurations() {
     echo -e "\n${CYAN}=== VERIFICAÇÃO DE CONFIGURAÇÕES ===${NC}"
     
     local all_ok=true
+    local swap_uuid=$(get_swap_uuid)
     
     # Teste 1: Verificar hooks do mkinitcpio
     echo -e "\n${BLUE}1. Verificando mkinitcpio hooks:${NC}"
@@ -456,13 +466,6 @@ test_configurations() {
         all_ok=false
     fi
     
-    # Verificar se há parâmetros duplicados
-    local resume_count=$(grep -o "resume=" /etc/kernel/cmdline | wc -l)
-    if [[ $resume_count -gt 1 ]]; then
-        echo -e "   ⚠️  ${YELLOW}AVISO: Parâmetros 'resume' duplicados encontrados${NC}"
-        all_ok=false
-    fi
-    
     # Teste 3: Verificar partição swap
     echo -e "\n${BLUE}3. Verificando partição swap:${NC}"
     local swap_device=$(swapon --show=name --noheadings | head -1)
@@ -470,13 +473,7 @@ test_configurations() {
         echo -e "   ✅ ${GREEN}Partição swap encontrada: $swap_device${NC}"
         local swap_size=$(swapon --show=size --noheadings | head -1)
         echo -e "   📊 Tamanho: ${CYAN}$swap_size${NC}"
-        
-        # Verificar se é partição (não swapfile)
-        if [[ $swap_device == /dev/* ]]; then
-            echo -e "   ✅ ${GREEN}É uma partição swap (recomendado)${NC}"
-        else
-            echo -e "   ⚠️  ${YELLOW}É um swapfile (menos confiável para hibernação)${NC}"
-        fi
+        echo -e "   🔑 UUID: ${CYAN}$swap_uuid${NC}"
     else
         echo -e "   ❌ ${RED}Nenhuma partição swap ativa encontrada${NC}"
         all_ok=false
@@ -484,7 +481,7 @@ test_configurations() {
     
     # Teste 4: Verificar logind.conf
     echo -e "\n${BLUE}4. Verificando logind.conf:${NC}"
-    if grep -q "HandleLidSwitch=suspend-then-hibernate" /etc/systemd/logind.conf; then
+    if grep -q "HandleLidSwitch=hibernate" /etc/systemd/logind.conf; then
         echo -e "   ✅ ${GREEN}Configuração lid switch encontrada${NC}"
     else
         echo -e "   ❌ ${RED}Configuração lid switch NÃO encontrada${NC}"
@@ -493,18 +490,10 @@ test_configurations() {
     
     # Teste 5: Verificar sleep.conf
     echo -e "\n${BLUE}5. Verificando sleep.conf:${NC}"
-    if grep -q "SuspendThenHibernateDelaySec=20min" /etc/systemd/sleep.conf; then
+    if grep -q "SuspendThenHibernateDelay=10min" /etc/systemd/sleep.conf; then
         echo -e "   ✅ ${GREEN}SuspendThenHibernate configurado${NC}"
     else
         echo -e "   ❌ ${RED}SuspendThenHibernate NÃO configurado${NC}"
-        all_ok=false
-    fi
-    
-    local swap_uuid=$(get_swap_uuid)
-    if grep -q "Resume=UUID=${swap_uuid}" /etc/systemd/sleep.conf; then
-        echo -e "   ✅ ${GREEN}Resume UUID configurado corretamente no sleep.conf${NC}"
-    else
-        echo -e "   ❌ ${RED}Resume UUID NÃO configurado corretamente no sleep.conf${NC}"
         all_ok=false
     fi
     
@@ -517,10 +506,29 @@ test_configurations() {
         all_ok=false
     fi
     
+    # Teste 7: Verificar arquivos conflitantes
+    echo -e "\n${BLUE}7. Verificando arquivos conflitantes:${NC}"
+    local conflict_found=false
+    if [[ -d /etc/systemd/logind.conf.d/ ]]; then
+        for conf_file in /etc/systemd/logind.conf.d/*.conf; do
+            if [[ -f "$conf_file" ]] && grep -q "HandleLidSwitch" "$conf_file"; then
+                echo -e "   ⚠️  ${YELLOW}Arquivo conflitante: $conf_file${NC}"
+                conflict_found=true
+            fi
+        done
+    fi
+    
+    if ! $conflict_found; then
+        echo -e "   ✅ ${GREEN}Nenhum arquivo conflitante encontrado${NC}"
+    else
+        echo -e "   ❌ ${RED}Arquivos conflitantes detectados${NC}"
+        all_ok=false
+    fi
+    
     # Resumo final
     echo -e "\n${CYAN}=== RESUMO DOS TESTES ===${NC}"
     if $all_ok; then
-        echo -e "✅ ${GREEN}Todas as configurações básicas estão OK!${NC}"
+        echo -e "✅ ${GREEN}Todas as configurações estão OK!${NC}"
         echo -e "✅ ${GREEN}Partição swap configurada - hibernação mais confiável${NC}"
     else
         echo -e "⚠️  ${YELLOW}Algumas configurações precisam de atenção${NC}"
@@ -529,7 +537,7 @@ test_configurations() {
     echo -e "\n${YELLOW}=== PRÓXIMOS PASSOS ===${NC}"
     echo "1. Reinicie o sistema: reboot"
     echo "2. Após reiniciar, teste a hibernação: systemctl hibernate"
-    echo "3. Para suspensão+hibernação automática: feche a tampa e aguarde 20min"
+    echo "3. Para hibernação automática: feche a tampa e aguarde"
 }
 
 execute_option() {
@@ -598,13 +606,12 @@ show_final_instructions() {
     fi
     
     echo -e "\n${CYAN}=== FUNCIONALIDADES CONFIGURADAS ===${NC}"
-    echo "✅ SuspendThenHibernateDelaySec=20min"
-    echo "   - Suspende primeiro, hiberna após 20min"
-    echo "✅ HandleLidSwitch=suspend-then-hibernate"
-    echo "   - Fechar tampa: suspende → hiberna em 20min"
+    echo "✅ HandleLidSwitch=hibernate"
+    echo "   - Fechar tampa: hiberna diretamente"
     echo "✅ HandleLidSwitchExternalPower=suspend"
     echo "   - Na tomada: apenas suspende"
-    echo "✅ Resume=UUID configurado automaticamente"
+    echo "✅ Resume UUID configurado no kernel"
+    echo "   - Mais confiável para hibernação"
     
     echo -e "\n${YELLOW}=== ⚠️  IMPORTANTE ===${NC}"
     echo "Para que todas as configurações entrem em vigor,"
@@ -615,7 +622,7 @@ show_final_instructions() {
     echo "Após reiniciar:"
     echo "- Use a opção 9 para testar as configurações"
     echo "- Execute: systemctl hibernate para testar hibernação"
-    echo "- Feche a tampa e aguarde 20min para testar suspensão+hibernação"
+    echo "- Feche a tampa para testar hibernação automática"
     echo ""
     echo "O sistema NÃO reiniciará automaticamente."
     echo "Reinicie manualmente quando for conveniente."
