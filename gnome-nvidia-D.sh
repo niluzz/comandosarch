@@ -5,20 +5,42 @@ echo ">>> Atualizando pacotes do sistema..."
 sudo pacman -Syu --noconfirm
 
 echo ">>> Instalando pacotes oficiais..."
+echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
   git zsh base-devel pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd power-profiles-daemon mesa-utils \
-  ibus dialect \
-  firefox-i18n-pt-br discord telegram-desktop \
+  fwupd power-profiles-daemon mesa-utils
+
+echo ">>> Input methods..."
+sudo pacman -S --needed --noconfirm \
+  ibus dialect
+
+echo ">>> Navegadores e comunicação..."
+sudo pacman -S --needed --noconfirm \
+  firefox-i18n-pt-br discord telegram-desktop
+
+echo ">>> Mídia e multimídia..."
+sudo pacman -S --needed --noconfirm \
   ffmpeg \
   gstreamer gst-plugins-base gst-plugins-good \
   gst-plugins-bad gst-plugins-ugly gst-libav \
-  libdvdread libdvdnav libdvdcss \
-  nvidia-utils nvidia-settings lib32-nvidia-utils \
-  jellyfin-ffmpeg jellyfin-server jellyfin-web \
+  libdvdread libdvdnav libdvdcss
+
+echo ">>> Drive NVIDIA..."
+sudo pacman -S --needed --noconfirm \
+  nvidia-utils nvidia-settings lib32-nvidia-utils
+
+echo ">>> Jellyfin..."
+sudo pacman -S --needed --noconfirm \
+  jellyfin-ffmpeg jellyfin-server jellyfin-web
+
+echo ">>> Fontes..."
+sudo pacman -S --needed --noconfirm \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd \
-  inter-font noto-fonts noto-fonts-emoji \
+  inter-font noto-fonts noto-fonts-emoji
+
+echo ">>> Outros..."
+sudo pacman -S --needed --noconfirm \
   qbittorrent newsflash amf-headers openrgb \
   handbrake
 
