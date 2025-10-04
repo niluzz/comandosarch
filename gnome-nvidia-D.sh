@@ -9,7 +9,8 @@ echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
   git zsh base-devel pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd power-profiles-daemon mesa-utils
+  fwupd power-profiles-daemon mesa-utils \
+  systemd-ukify
 
 echo ">>> Input methods..."
 sudo pacman -S --needed --noconfirm \
@@ -42,7 +43,7 @@ sudo pacman -S --needed --noconfirm \
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
   qbittorrent newsflash amf-headers openrgb \
-  handbrake
+  handbrake gufw
 
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
