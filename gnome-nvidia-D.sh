@@ -25,7 +25,7 @@ sudo pacman -S --needed --noconfirm \
   ffmpeg \
   gstreamer gst-plugins-base gst-plugins-good \
   gst-plugins-bad gst-plugins-ugly gst-libav \
-  libdvdread libdvdnav libdvdcss
+  libdvdread libdvdnav libdvdcss ffmpegthumbnailer
 
 echo ">>> Drive NVIDIA..."
 sudo pacman -S --needed --noconfirm \
