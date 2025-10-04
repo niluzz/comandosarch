@@ -11,7 +11,7 @@ sudo pacman -S --needed --noconfirm \
   git zsh base-devel pacman-contrib \
   file-roller p7zip unrar unzip \
   fwupd power-profiles-daemon mesa-utils \
-  ibus showtime papers
+  ibus systemd-ukify
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
