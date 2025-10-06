@@ -45,6 +45,10 @@ sudo pacman -S --needed --noconfirm \
   qbittorrent newsflash amf-headers openrgb \
   handbrake gufw
 
+echo "Ferramentas de Backup..."
+sudo pacman -S --needed --noconfirm \
+btrfs-assistant btrfsmaintenance snapper
+
 echo ">>> Instalando Paru (AUR helper)..."
 if ! command -v paru &>/dev/null; then
   git clone https://aur.archlinux.org/paru.git /tmp/paru
