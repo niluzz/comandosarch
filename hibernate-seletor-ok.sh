@@ -313,22 +313,18 @@ configure_systemd_logind() {
 # CONFIGURAÇÃO PERSONALIZADA DE HIBERNAÇÃO - Arch Linux
 # Configurado automaticamente por script de hibernação
 # =============================================================================
-
 # 🔋 AÇÕES DE ENERGIA
 HandlePowerKey=poweroff
 HandleSuspendKey=suspend
 HandleHibernateKey=hibernate
 HandleLidSwitch=suspend-then-hibernate
-
 # 🔌 AÇÕES NA TOMADA/DOCK
 HandleLidSwitchExternalPower=suspend
 HandleLidSwitchDocked=ignore
-
 # ⏰ TEMPOS DE ESPERA
 HoldoffTimeoutSec=10s
 IdleAction=hibernate
 IdleActionSec=30min
-
 # 🔧 COMPORTAMENTO DE INIBIÇÃO
 PowerKeyIgnoreInhibited=yes
 SuspendKeyIgnoreInhibited=yes
@@ -378,17 +374,13 @@ configure_systemd_sleep() {
 # CONFIGURAÇÃO PERSONALIZADA DE SLEEP/HIBERNAÇÃO - Arch Linux
 # Configurado automaticamente por script de hibernação
 # =============================================================================
-
 # 🔋 COMPORTAMENTO DE ENERGIA
 AllowSuspend=yes
 AllowHibernation=yes
 AllowHybridSleep=yes
 AllowSuspendThenHibernate=yes
-
 # 💤 ESTADOS DE SUSPENSÃO
 SuspendState=freeze
-SuspendMode=s2idle
-
 # ⏰ TEMPOS CONFIGURADOS
 # Resume UUID configurado APENAS nos parâmetros do kernel
 SuspendThenHibernateDelay=10min
