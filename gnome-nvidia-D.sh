@@ -45,7 +45,8 @@ sudo pacman -S --needed --noconfirm \
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
   qbittorrent newsflash amf-headers openrgb \
-  handbrake gufw
+  handbrake gufw directx-headers lib32-directx-headers \
+  directx-shader-compiler
 
 echo "Ferramentas de Backup..."
 sudo pacman -S --needed --noconfirm \
