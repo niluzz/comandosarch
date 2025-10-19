@@ -29,7 +29,8 @@ echo ">>> Fontes..."
 sudo pacman -S --needed --noconfirm \
   ttf-firacode-nerd ttf-dejavu-nerd ttf-hack-nerd \
   inter-font noto-fonts noto-fonts-emoji \
-  ttf-montserrat ttf-opensans ttf-roboto
+  ttf-montserrat ttf-opensans ttf-roboto \
+  noto-fonts-cjk
 
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
