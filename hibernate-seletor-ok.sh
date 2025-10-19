@@ -322,9 +322,9 @@ HandleLidSwitch=suspend-then-hibernate
 HandleLidSwitchExternalPower=suspend
 HandleLidSwitchDocked=ignore
 # ⏰ TEMPOS DE ESPERA
-HoldoffTimeoutSec=10s
-IdleAction=hibernate
-IdleActionSec=30min
+#HoldoffTimeoutSec=10s
+#IdleAction=hibernate
+#IdleActionSec=30min
 # 🔧 COMPORTAMENTO DE INIBIÇÃO
 PowerKeyIgnoreInhibited=yes
 SuspendKeyIgnoreInhibited=yes
@@ -383,7 +383,6 @@ AllowSuspendThenHibernate=yes
 SuspendState=freeze
 # ⏰ TEMPOS CONFIGURADOS
 # Resume UUID configurado APENAS nos parâmetros do kernel
-SuspendThenHibernateDelay=10min
 HibernateDelaySec=30min
 HibernateOnACPower=no
 EOF
