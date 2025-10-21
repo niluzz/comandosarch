@@ -84,7 +84,7 @@ CMDLINE_FILE="/etc/kernel/cmdline"
 if [ ! -f "$CMDLINE_FILE" ]; then
   echo "Arquivo $CMDLINE_FILE não encontrado. Criando..."
   sudo mkdir -p /etc/kernel
-  echo "quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt" | sudo tee "$CMDLINE_FILE"
+  echo "quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1 nvidia.NVreg_TemporaryFilePath=/var/tmp" | sudo tee "$CMDLINE_FILE"
 else
   for param in quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt; do
     if ! grep -qw "$param" "$CMDLINE_FILE"; then
