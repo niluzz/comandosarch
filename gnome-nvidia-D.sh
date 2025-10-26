@@ -75,13 +75,9 @@ echo ">>> Adicionando otimizações gráficas NVIDIA..."
 
 # Verifica e adiciona cada variável se não existir
 declare -A env_vars=(
-  ["__GL_YIELD"]="\"USLEEP\""
-  ["__GL_AllowLargeBuffers"]="1"
-  ["__GL_WINE_USE_LIBRARY_FROM_PROTON"]="1"
   ["__GL_WAYLAND_VSYNC"]="1"
   ["MOZ_ENABLE_WAYLAND"]="1"
   ["LIBVA_DRIVER_NAME"]="nvidia"
-  ["NVD_BACKEND"]="direct"
   ["FFMPEG_VAAPI"]="1"
 )
 
@@ -109,9 +105,9 @@ CMDLINE_FILE="/etc/kernel/cmdline"
 if [ ! -f "$CMDLINE_FILE" ]; then
   echo "Arquivo $CMDLINE_FILE não encontrado. Criando..."
   sudo mkdir -p /etc/kernel
-  echo "quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1 nvidia.NVreg_TemporaryFilePath=/var/tmp" | sudo tee "$CMDLINE_FILE"
+  echo "quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1" | sudo tee "$CMDLINE_FILE"
 else
-  for param in quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1 nvidia.NVreg_TemporaryFilePath=/var/tmp; do
+  for param in quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1; do
     if ! grep -qw "$param" "$CMDLINE_FILE"; then
       sudo sed -i "1s|$| $param|" "$CMDLINE_FILE"
       echo "Parâmetro '$param' adicionado ao kernel cmdline."
