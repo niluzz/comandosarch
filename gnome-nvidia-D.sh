@@ -71,23 +71,24 @@ paru -S --needed --noconfirm \
 
 echo ">>> Configurando variáveis de ambiente em /etc/environment..."
 ENV_FILE="/etc/environment"
-echo ">>> Adicionando otimizações gráficas NVIDIA..."
 
-# Verifica e adiciona cada variável se não existir
+# Variáveis para otimização NVIDIA e Wayland
 declare -A env_vars=(
-  ["__GL_WAYLAND_VSYNC"]="1"
-  ["MOZ_ENABLE_WAYLAND"]="1"
-  ["LIBVA_DRIVER_NAME"]="nvidia"
-  ["FFMPEG_VAAPI"]="1"
+    ["MOZ_ENABLE_WAYLAND"]="1"
+    ["LIBVA_DRIVER_NAME"]="nvidia" 
+    ["NVD_BACKEND"]="direct"
+    ["FFMPEG_VAAPI"]="1" 
 )
 
+echo ">>> Adicionando otimizações gráficas..."
+
 for var in "${!env_vars[@]}"; do
-  if ! grep -q "^$var=" "$ENV_FILE" 2>/dev/null; then
-    echo "$var=${env_vars[$var]}" | sudo tee -a "$ENV_FILE"
-    echo "Variável '$var' adicionada ao /etc/environment"
-  else
-    echo "Variável '$var' já existe em /etc/environment"
-  fi
+    if ! grep -q "^$var=" "$ENV_FILE" 2>/dev/null; then
+        echo "$var=${env_vars[$var]}" | sudo tee -a "$ENV_FILE"
+        echo "✓ Variável '$var' adicionada"
+    else
+        echo "→ Variável '$var' já existe"
+    fi
 done
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
