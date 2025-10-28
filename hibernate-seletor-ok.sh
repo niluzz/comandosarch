@@ -322,9 +322,9 @@ HandleLidSwitch=suspend-then-hibernate
 HandleLidSwitchExternalPower=suspend
 HandleLidSwitchDocked=ignore
 # ⏰ TEMPOS DE ESPERA
-HoldoffTimeoutSec=10s
-IdleAction=ignore
-IdleActionSec=60min
+#HoldoffTimeoutSec=10s
+#IdleAction=ignore
+#IdleActionSec=60min
 # 🔧 COMPORTAMENTO DE INIBIÇÃO
 PowerKeyIgnoreInhibited=yes
 SuspendKeyIgnoreInhibited=yes
