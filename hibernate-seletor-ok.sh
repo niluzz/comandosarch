@@ -264,7 +264,7 @@ configure_kernel() {
     local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g' | sed -E 's/resume_offset=[^ ]*//g' | sed -E 's/resume_force=[^ ]*//g' | sed -E 's/acpi_sleep=[^ ]*//g' | sed -E 's/mem_sleep_default=[^ ]*//g')
     
     # Construir novos parâmetros (sem resume_offset para partição swap)
-    local new_params="resume=UUID=${swap_uuid} resume_force=1 acpi_sleep=nonvs mem_sleep_default=deep"
+    local new_params="resume=UUID=${swap_uuid} zswap.enabled=0 amdgpu.runpm=0"
     
     # Combinar cmdline limpo com novos parâmetros
     local new_cmdline="${clean_cmdline} ${new_params}"
