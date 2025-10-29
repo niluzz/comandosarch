@@ -387,7 +387,6 @@ AllowHibernation=yes
 AllowHybridSleep=no
 AllowSuspendThenHibernate=yes
 SuspendState=freeze
-#SuspendThenHibernateDelaySec=20min
 HibernateDelaySec=50m
 HibernateOnACPower=no
 EOF
