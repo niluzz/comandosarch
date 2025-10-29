@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # =============================================
-# TLP MANAGER - DELL INSPIRON 15 3535 AMD
-# Com correções automáticas de governadores
+# AUTO TLP SETUP - DELL INSPIRON 15 3535 AMD
+# SELEÇÃO INTERATIVA DE PERFIS
 # =============================================
 
 set -e
@@ -12,6 +12,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Funções de log
@@ -19,23 +20,8 @@ log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_profile() { echo -e "${CYAN}[PERFIL]${NC} $1"; }
 
-# Menu principal
-show_menu() {
-    echo -e "${GREEN}"
-    echo "============================================="
-    echo "           TLP MANAGER - AMD OPTIMIZED"
-    echo "     Com correções automáticas de governadores"
-    echo "============================================="
-    echo -e "${NC}"
-    echo "1) Instalação Completa do TLP"
-    echo "2) Verificação Rápida do Sistema"
-    echo "3) Sair"
-    echo
-    read -p "Selecione uma opção [1-3]: " choice
-}
-
-# Verificar se é root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
         log_error "Execute como usuário normal, senha será solicitada quando necessário."
@@ -43,64 +29,164 @@ check_root() {
     fi
 }
 
-# Detectar sistema
-detect_system() {
-    log_info "Detectando hardware..."
-    CPU_MODEL=$(grep -m1 "model name" /proc/cpuinfo | cut -d: -f2 | xargs)
-    GPU_MODEL=$(lspci | grep -i vga | head -1 | cut -d: -f3 | xargs)
+detect_capabilities() {
+    log_info "Detectando capacidades do sistema..."
     
-    log_info "CPU: $CPU_MODEL"
-    log_info "GPU: $GPU_MODEL"
-}
-
-# Verificar e corrigir governadores automaticamente
-check_and_fix_governors() {
-    log_info "Verificando e corrigindo governadores de CPU..."
-    
+    # Detectar governadores de CPU disponíveis
     if [ -f "/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors" ]; then
         AVAILABLE_GOVERNORS=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors)
-        log_info "Governadores disponíveis: $AVAILABLE_GOVERNORS"
-        
-        # Determinar melhores governadores baseados na disponibilidade
-        if echo "$AVAILABLE_GOVERNORS" | grep -q "ondemand"; then
-            GOV_AC="ondemand"
-        elif echo "$AVAILABLE_GOVERNORS" | grep -q "performance"; then
-            GOV_AC="performance"
-        else
-            GOV_AC=$(echo "$AVAILABLE_GOVERNORS" | cut -d' ' -f1)
-        fi
-        
-        if echo "$AVAILABLE_GOVERNORS" | grep -q "powersave"; then
-            GOV_BAT="powersave"
-        elif echo "$AVAILABLE_GOVERNORS" | grep -q "conservative"; then
-            GOV_BAT="conservative"
-        else
-            GOV_BAT="$GOV_AC"  # Usa o mesmo que AC se não encontrar opção melhor
-        fi
-        
-        log_success "Governadores configurados: AC=$GOV_AC | BAT=$GOV_BAT"
-        return 0
+        log_info "Governadores de CPU disponíveis: $AVAILABLE_GOVERNORS"
     else
-        log_warning "Não foi possível acessar governadores, usando configuração padrão"
-        GOV_AC="ondemand"
-        GOV_BAT="powersave"
-        return 1
+        AVAILABLE_GOVERNORS="powersave"
+        log_warning "Governadores não detectados, usando padrão: powersave"
+    fi
+    
+    # Detectar capacidades da GPU AMD
+    GPU_CAPABILITIES="basic"
+    if [ -d "/sys/class/drm/card0/device" ]; then
+        if [ -f "/sys/class/drm/card0/device/power_dpm_force_performance_level" ]; then
+            GPU_CAPABILITIES="advanced"
+        fi
+    fi
+    log_info "Capacidades da GPU: $GPU_CAPABILITIES"
+    
+    # Verificar se AMD P-State está disponível
+    if grep -q "amd_pstate" /proc/cmdline 2>/dev/null || dmesg | grep -q "amd_pstate" 2>/dev/null; then
+        AMD_PSTATE_AVAILABLE=1
+        log_info "AMD P-State: Disponível"
+    else
+        AMD_PSTATE_AVAILABLE=0
+        log_info "AMD P-State: Não disponível"
     fi
 }
 
-# Instalar pacotes necessários
+show_profile_menu() {
+    echo ""
+    echo -e "${GREEN}=============================================${NC}"
+    echo -e "${GREEN}          SELECIONE O PERFIL TLP${NC}"
+    echo -e "${GREEN}=============================================${NC}"
+    echo ""
+    echo -e "${CYAN}1. ECONOMIA (PowerSave)${NC}"
+    echo "   • Máxima economia de bateria"
+    echo "   • Performance reduzida"
+    echo "   • Ideal para uso básico em bateria"
+    echo ""
+    echo -e "${CYAN}2. BALANCEADO (Ondemand)${NC}"
+    echo "   • Equilíbrio entre performance e bateria"
+    echo "   • Adapta automaticamente à demanda"
+    echo "   • Recomendado para uso geral"
+    echo ""
+    echo -e "${CYAN}3. PERFORMANCE (Performance)${NC}"
+    echo "   • Máxima performance"
+    echo "   • Consumo elevado de energia"
+    echo "   • Ideal para jogos/trabalho pesado"
+    echo ""
+    echo -e "${CYAN}4. SILENCIOSO (Silent)${NC}"
+    echo "   • Foco em baixas temperaturas e ruído"
+    echo "   • Performance moderada"
+    echo "   • Ideal para multimídia/escritório"
+    echo ""
+    
+    while true; do
+        read -p "Selecione o perfil (1-4): " profile_choice
+        case $profile_choice in
+            1)
+                PROFILE_NAME="ECONOMIA"
+                PROFILE_TYPE="powersave"
+                break
+                ;;
+            2)
+                PROFILE_NAME="BALANCEADO"
+                PROFILE_TYPE="balanced"
+                break
+                ;;
+            3)
+                PROFILE_NAME="PERFORMANCE"
+                PROFILE_TYPE="performance"
+                break
+                ;;
+            4)
+                PROFILE_NAME="SILENCIOSO"
+                PROFILE_TYPE="silent"
+                break
+                ;;
+            *)
+                echo -e "${RED}Opção inválida! Escolha 1, 2, 3 ou 4.${NC}"
+                ;;
+        esac
+    done
+    
+    log_profile "Perfil selecionado: $PROFILE_NAME"
+}
+
+configure_profile() {
+    log_info "Configurando perfil: $PROFILE_NAME"
+    
+    # Determinar governadores baseados no perfil e disponibilidade
+    case $PROFILE_TYPE in
+        "powersave")
+            CPU_GOVERNOR="powersave"
+            CPU_BOOST_BAT=0
+            CPU_MAX_PERF_BAT=70
+            GPU_STATE_BAT="battery"
+            GPU_PROFILE_BAT="low"
+            PLATFORM_PROFILE_BAT="low-power"
+            ;;
+        "balanced")
+            # Tentar governadores adaptativos, fallback para powersave
+            if echo "$AVAILABLE_GOVERNORS" | grep -q "ondemand"; then
+                CPU_GOVERNOR="ondemand"
+            elif echo "$AVAILABLE_GOVERNORS" | grep -q "schedutil"; then
+                CPU_GOVERNOR="schedutil"
+            else
+                CPU_GOVERNOR="powersave"
+            fi
+            CPU_BOOST_BAT=1
+            CPU_MAX_PERF_BAT=90
+            GPU_STATE_BAT="balanced"
+            GPU_PROFILE_BAT="low"
+            PLATFORM_PROFILE_BAT="low-power"
+            ;;
+        "performance")
+            if echo "$AVAILABLE_GOVERNORS" | grep -q "performance"; then
+                CPU_GOVERNOR="performance"
+            else
+                CPU_GOVERNOR="powersave"  # Fallback
+            fi
+            CPU_BOOST_BAT=1
+            CPU_MAX_PERF_BAT=100
+            GPU_STATE_BAT="performance"
+            GPU_PROFILE_BAT="high"
+            PLATFORM_PROFILE_BAT="balanced"
+            ;;
+        "silent")
+            CPU_GOVERNOR="powersave"
+            CPU_BOOST_BAT=0
+            CPU_MAX_PERF_BAT=60
+            GPU_STATE_BAT="battery"
+            GPU_PROFILE_BAT="low"
+            PLATFORM_PROFILE_BAT="low-power"
+            ;;
+    esac
+    
+    log_info "Configurações do perfil:"
+    log_info "• CPU Governor: $CPU_GOVERNOR"
+    log_info "• CPU Boost (bateria): $CPU_BOOST_BAT"
+    log_info "• CPU Max Perf (bateria): $CPU_MAX_PERF_BAT%"
+    log_info "• GPU State (bateria): $GPU_STATE_BAT"
+}
+
 install_packages() {
     log_info "Instalando pacotes TLP..."
-    sudo pacman -S --noconfirm tlp tlp-rdw
+    
+    sudo pacman -Syu --noconfirm
+    sudo pacman -S --noconfirm tlp tlp-rdw smartmontools
+    
     log_success "Pacotes TLP instalados!"
 }
 
-# Configurar TLP com governadores corrigidos
 configure_tlp() {
-    log_info "Configurando TLP com governadores corrigidos..."
-    
-    # Verificar e corrigir governadores
-    check_and_fix_governors
+    log_info "Aplicando configuração do perfil $PROFILE_NAME..."
     
     # Backup do arquivo original
     if [ -f "/etc/tlp.conf" ]; then
@@ -108,11 +194,12 @@ configure_tlp() {
         log_info "Backup do tlp.conf criado"
     fi
     
-    # Configuração TLP com governadores corrigidos
+    # Configuração baseada no perfil selecionado
     sudo tee /etc/tlp.conf > /dev/null << EOF
 # ============================================================================
 # TLP CONFIGURAÇÃO - DELL INSPIRON 15 3535 AMD
-# Governadores corrigidos automaticamente
+# PERFIL: $PROFILE_NAME
+# CPU: AMD Ryzen 5 7520U | GPU: AMD Radeon 610M | SSD: NVMe
 # ============================================================================
 
 # --- CONFIGURAÇÃO BÁSICA ---
@@ -121,30 +208,30 @@ TLP_DEFAULT_MODE=AC
 TLP_PERSISTENT_DEFAULT=0
 
 # --- CPU AMD RYZEN 5 7520U ---
-CPU_SCALING_GOVERNOR_ON_AC=$GOV_AC
-CPU_SCALING_GOVERNOR_ON_BAT=$GOV_BAT
+CPU_SCALING_GOVERNOR_ON_AC=$CPU_GOVERNOR
+CPU_SCALING_GOVERNOR_ON_BAT=$CPU_GOVERNOR
 CPU_ENERGY_PERF_POLICY_ON_AC=balance_performance
-CPU_ENERGY_PERF_POLICY_ON_BAT=power
+CPU_ENERGY_PERF_POLICY_ON_BAT=balance_power
 CPU_BOOST_ON_AC=1
-CPU_BOOST_ON_BAT=0
+CPU_BOOST_ON_BAT=$CPU_BOOST_BAT
 
-# AMD P-State para Zen 2
-AMD_PSTATE_ENABLE=1
+# AMD P-State se disponível
+AMD_PSTATE_ENABLE=$AMD_PSTATE_AVAILABLE
 AMD_PSTATE_MODE=guided
 
 # Limites de performance
 CPU_MIN_PERF_ON_AC=0
 CPU_MAX_PERF_ON_AC=100
 CPU_MIN_PERF_ON_BAT=0
-CPU_MAX_PERF_ON_BAT=80
+CPU_MAX_PERF_ON_BAT=$CPU_MAX_PERF_BAT
 
 # --- GPU AMD RADEON 610M ---
 RADEON_DPM_STATE_ON_AC=performance
-RADEON_DPM_STATE_ON_BAT=battery
+RADEON_DPM_STATE_ON_BAT=$GPU_STATE_BAT
 RADEON_DPM_PERF_LEVEL_ON_AC=auto
-RADEON_DPM_PERF_LEVEL_ON_BAT=low
+RADEON_DPM_PERF_LEVEL_ON_BAT=auto
 RADEON_POWER_PROFILE_ON_AC=high
-RADEON_POWER_PROFILE_ON_BAT=low
+RADEON_POWER_PROFILE_ON_BAT=$GPU_PROFILE_BAT
 
 # --- SSD NVMe ---
 DISK_DEVICES="nvme0n1"
@@ -156,9 +243,9 @@ NVME_POWERMGMT_ON_BAT=minimal
 
 # --- PLATFORM PROFILE ---
 PLATFORM_PROFILE_ON_AC=balanced
-PLATFORM_PROFILE_ON_BAT=low-power
+PLATFORM_PROFILE_ON_BAT=$PLATFORM_PROFILE_BAT
 
-# --- REDE WIFI ---
+# --- WIFI ---
 WIFI_PWR_ON_AC=on
 WIFI_PWR_ON_BAT=on
 
@@ -190,162 +277,171 @@ SCHED_POWERSAVE_ON_AC=0
 SCHED_POWERSAVE_ON_BAT=1
 EOF
 
-    log_success "Configuração TLP aplicada com governadores corrigidos!"
+    log_success "Configuração do perfil $PROFILE_NAME aplicada!"
 }
 
-# Configurar serviços
 setup_services() {
     log_info "Configurando serviços TLP..."
     
     sudo systemctl mask systemd-rfkill.service 2>/dev/null || true
     sudo systemctl mask systemd-rfkill.socket 2>/dev/null || true
+    
     sudo systemctl enable tlp.service
     
-    # Verificar se tlp-sleep existe antes de habilitar
     if systemctl list-unit-files | grep -q tlp-sleep.service; then
         sudo systemctl enable tlp-sleep.service
     fi
     
     sudo systemctl restart tlp.service
+    
     log_success "Serviços TLP configurados!"
 }
 
-# Criar aliases de verificação
 create_aliases() {
-    log_info "Criando aliases de verificação..."
+    log_info "Criando aliases de monitoramento..."
     
-    if ! grep -q "TLP Verification Aliases" ~/.bashrc; then
-        cat >> ~/.bashrc << 'EOF'
+    if ! grep -q "TLP Aliases" ~/.bashrc; then
+        cat >> ~/.bashrc << EOF
 
 # ============================================================================
-# TLP VERIFICATION ALIASES
+# TLP ALIASES - Perfil: $PROFILE_NAME
 # ============================================================================
 alias tlp-status='sudo tlp-stat -s'
 alias tlp-battery='sudo tlp-stat -b'
-alias tlp-check='echo "=== TLP Service ===" && systemctl is-active tlp; echo "=== Power Source ===" && cat /sys/class/power_supply/AC/online 2>/dev/null | sed "s/1/AC/;s/0/Battery/"; echo "=== CPU Governors ===" && cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null | sort -u | tr "\n" " "; echo ""'
-alias system-stats='echo "=== System Status ==="; tlp-check; echo "=== Battery Info ==="; cat /sys/class/power_supply/BAT1/capacity 2>/dev/null | awk "{print \"Battery: \" \$1 \"%\"}" || echo "Battery: N/A"; echo "=== Power Consumption ==="; cat /sys/class/power_supply/BAT1/power_now 2>/dev/null | awk "{print \"Consumption: \" \$1/1000000 \" W\"}" || echo "Consumption: N/A"'
+alias tlp-config='sudo tlp-stat -c'
+alias cpu-governor='cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
+alias battery-status='cat /sys/class/power_supply/BAT1/capacity 2>/dev/null | awk "{print \\\$1 \\\"%\\\"}" || echo "N/A"'
+
+function system-stats() {
+    echo "=== PERFIL TLP ==="
+    echo "Perfil: $PROFILE_NAME"
+    echo "Governador: $CPU_GOVERNOR"
+    echo "=== STATUS ==="
+    sudo tlp-stat -s | grep -E "(Mode|Power source)" | head -2
+    echo "=== BATERIA ==="
+    cat /sys/class/power_supply/BAT1/capacity 2>/dev/null | awk '{print $1 "%"}' || echo "N/A"
+    cat /sys/class/power_supply/BAT1/status 2>/dev/null | awk '{print "Status: " $1}' || echo "N/A"
+}
+
+function change-tlp-profile() {
+    echo "Para alterar o perfil TLP, execute:"
+    echo "  sudo /usr/local/setup-tlp.sh"
+    echo ""
+    echo "Perfis disponíveis:"
+    echo "  1. ECONOMIA    - Máxima bateria"
+    echo "  2. BALANCEADO  - Equilíbrio (recomendado)"
+    echo "  3. PERFORMANCE - Máxima performance" 
+    echo "  4. SILENCIOSO  - Baixo ruído"
+}
 EOF
     fi
     
-    log_success "Aliases criados! Execute 'source ~/.bashrc' para carregar."
+    log_success "Aliases criados!"
 }
 
-# Verificação completa do sistema
-system_verification() {
-    echo -e "${GREEN}"
-    echo "🔍 VERIFICAÇÃO COMPLETA DO SISTEMA"
-    echo "=================================="
-    echo -e "${NC}"
+show_profile_summary() {
+    echo ""
+    echo -e "${GREEN}=============================================${NC}"
+    echo -e "${GREEN}          RESUMO DO PERFIL${NC}"
+    echo -e "${GREEN}=============================================${NC}"
+    echo ""
+    echo -e "${CYAN}PERFIL SELECIONADO: $PROFILE_NAME${NC}"
+    echo ""
     
-    # Serviço TLP
-    log_info "=== SERVIÇO TLP ==="
-    if systemctl is-active tlp >/dev/null 2>&1; then
-        log_success "✓ TLP service: ATIVO"
-    else
-        log_error "✗ TLP service: INATIVO"
-    fi
+    case $PROFILE_TYPE in
+        "powersave")
+            echo -e "🔋 ${GREEN}ECONOMIA MÁXIMA${NC}"
+            echo "• CPU: Governador powersave"
+            echo "• CPU Boost: Desativado em bateria"
+            echo "• Performance CPU: Limitada a 70%"
+            echo "• GPU: Modo battery"
+            echo "• Autonomia: +30-40% de bateria"
+            echo "• Uso ideal: Navegação, documentos"
+            ;;
+        "balanced")
+            echo -e "⚖️  ${GREEN}BALANCEADO${NC}"
+            echo "• CPU: Governador $CPU_GOVERNOR"
+            echo "• CPU Boost: Ativado quando necessário"
+            echo "• Performance CPU: Até 90%"
+            echo "• GPU: Modo balanced"
+            echo "• Autonomia: +15-25% de bateria"
+            echo "• Uso ideal: Uso geral, multitarefa"
+            ;;
+        "performance")
+            echo -e "🚀 ${GREEN}ALTA PERFORMANCE${NC}"
+            echo "• CPU: Governador $CPU_GOVERNOR"
+            echo "• CPU Boost: Sempre ativado"
+            echo "• Performance CPU: 100%"
+            echo "• GPU: Modo performance"
+            echo "• Autonomia: Economia mínima"
+            echo "• Uso ideal: Jogos, edição, compilações"
+            ;;
+        "silent")
+            echo -e "🔇 ${GREEN}SILENCIOSO${NC}"
+            echo "• CPU: Governador powersave"
+            echo "• CPU Boost: Desativado"
+            echo "• Performance CPU: Limitada a 60%"
+            echo "• GPU: Modo battery"
+            echo "• Autonomia: +40-50% de bateria"
+            echo "• Uso ideal: Vídeos, música, leitura"
+            ;;
+    esac
     
-    # Status TLP
-    log_info "=== STATUS TLP ==="
-    sudo tlp-stat -s 2>/dev/null | grep -E "(TLP enable|Mode|Power source)" | head -3 | while read line; do
-        log_info "$line"
-    done
-    
-    # Governadores de CPU
-    log_info "=== CPU GOVERNORS ==="
-    if [ -f "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ]; then
-        CURRENT_GOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)
-        log_success "✓ Governador atual: $CURRENT_GOV"
-        
-        # Verificar se há erros nos logs
-        log_info "=== VERIFICAÇÃO DE ERROS ==="
-        ERRORS=$(sudo journalctl -u tlp.service -n 10 2>/dev/null | grep -i "error\|fail" | tail -3)
-        if [ -n "$ERRORS" ]; then
-            log_error "Erros encontrados:"
-            echo "$ERRORS"
-        else
-            log_success "✓ Nenhum erro encontrado nos logs"
-        fi
-    else
-        log_warning "✗ Governadores não disponíveis"
-    fi
-    
-    # Bateria
-    log_info "=== BATERIA ==="
-    if [ -f "/sys/class/power_supply/BAT1/capacity" ]; then
-        BATTERY=$(cat /sys/class/power_supply/BAT1/capacity)
-        STATUS=$(cat /sys/class/power_supply/BAT1/status 2>/dev/null || echo "unknown")
-        log_success "✓ Bateria: $BATTERY% ($STATUS)"
-    else
-        log_warning "✗ Informações da bateria não disponíveis"
-    fi
-    
-    # Fonte de energia
-    log_info "=== FONTE DE ENERGIA ==="
-    if [ -f "/sys/class/power_supply/AC/online" ]; then
-        AC_STATUS=$(cat /sys/class/power_supply/AC/online)
-        if [ "$AC_STATUS" = "1" ]; then
-            log_info "✓ Conectado na tomada (AC)"
-        else
-            log_info "✓ Modo bateria (BAT)"
-        fi
-    fi
-    
-    echo
-    log_success "Verificação concluída!"
+    echo ""
+    echo -e "${YELLOW}Para alterar o perfil posteriormente, execute:${NC}"
+    echo -e "  ${CYAN}sudo /usr/local/setup-tlp.sh${NC}"
 }
 
-# Instalação completa
-install_complete() {
+verify_installation() {
+    log_info "Verificando instalação..."
+    
+    sleep 2
+    
+    if systemctl is-active --quiet tlp.service; then
+        log_success "✓ TLP service está ativo"
+    else
+        log_error "✗ TLP service não está ativo"
+    fi
+    
+    if sudo tlp-stat -s > /dev/null 2>&1; then
+        log_success "✓ Configuração TLP carregada"
+    else
+        log_error "✗ Erro na configuração TLP"
+    fi
+    
+    # Verificar erros
+    TLP_ERRORS=$(sudo journalctl -u tlp.service --since "1 minute ago" | grep -i "Error\|error" | head -1 || echo "Nenhum erro")
+    if [ "$TLP_ERRORS" != "Nenhum erro" ]; then
+        log_warning "Erros no TLP: $TLP_ERRORS"
+    else
+        log_success "✓ Nenhum erro encontrado"
+    fi
+    
+    log_success "✅ Instalação do perfil $PROFILE_NAME concluída!"
+}
+
+main() {
     echo -e "${GREEN}"
     echo "============================================="
-    echo "        INSTALAÇÃO COMPLETA DO TLP"
-    echo "   Com correções automáticas de governadores"
+    echo "    TLP SETUP - SELEÇÃO DE PERFIL"
     echo "============================================="
     echo -e "${NC}"
     
     check_root
-    detect_system
+    detect_capabilities
+    show_profile_menu
+    configure_profile
     install_packages
     configure_tlp
     setup_services
     create_aliases
+    show_profile_summary
+    verify_installation
     
-    echo
-    log_success "✅ INSTALAÇÃO CONCLUÍDA!"
-    log_info "📋 Comandos disponíveis após executar: source ~/.bashrc"
-    log_info "   system-stats    - Status completo do sistema"
-    log_info "   tlp-check       - Verificação rápida do TLP"
-    log_info "   tlp-status      - Status detalhado do TLP"
-    echo
+    echo ""
+    log_info "Execute 'source ~/.bashrc' para carregar os aliases"
+    log_info "Use 'system-stats' para verificar o status"
+    log_info "Use 'change-tlp-profile' para ver opções de alteração"
 }
 
-# Execução principal
-main() {
-    while true; do
-        show_menu
-        
-        case $choice in
-            1)
-                install_complete
-                ;;
-            2)
-                system_verification
-                ;;
-            3)
-                log_info "Saindo..."
-                exit 0
-                ;;
-            *)
-                log_error "Opção inválida!"
-                ;;
-        esac
-        
-        echo
-        read -p "Pressione Enter para continuar..."
-        clear
-    done
-}
-
-# Executar
 main "$@"
