@@ -175,7 +175,7 @@ configure_suspend_only() {
     # Kernel parameters
     if [[ -f /etc/kernel/cmdline ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
-        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g' | sed -E 's/resume_force=[^ ]*//g')
+        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
         
         # Adicionar parâmetros para GPU se necessário
         if [[ "$GPU_DRIVER" == "amdgpu" ]]; then
@@ -231,8 +231,8 @@ configure_hibernate_only() {
     # Kernel parameters
     if [[ -f /etc/kernel/cmdline && -n "$SWAP_UUID" ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
-        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g' | sed -E 's/resume_force=[^ ]*//g')
-        local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID resume_force=1"
+        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
+        local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID"
         
         echo "$new_cmdline" > /etc/kernel/cmdline
         info "Parâmetros do kernel configurados para hibernação"
@@ -280,8 +280,8 @@ configure_mixed_mode() {
     # Kernel parameters
     if [[ -f /etc/kernel/cmdline && -n "$SWAP_UUID" ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
-        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g' | sed -E 's/resume_force=[^ ]*//g')
-        local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID resume_force=1"
+        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
+        local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID"
         
         if [[ "$GPU_DRIVER" == "amdgpu" ]]; then
             new_cmdline="$new_cmdline amdgpu.runpm=0"
@@ -345,8 +345,8 @@ configure_smart_mode() {
     # Kernel parameters
     if [[ -f /etc/kernel/cmdline && -n "$SWAP_UUID" ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
-        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g' | sed -E 's/resume_force=[^ ]*//g')
-        local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID resume_force=1 zswap.enabled=0"
+        local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
+        local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID zswap.enabled=0"
         
         if [[ "$GPU_DRIVER" == "amdgpu" ]]; then
             new_cmdline="$new_cmdline amdgpu.runpm=0"
