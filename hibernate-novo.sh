@@ -45,6 +45,51 @@ show_header() {
     echo -e "${NC}"
 }
 
+# CONFIGURAR GDM/WAYLAND
+configure_gdm_wayland() {
+    step "Configurando GDM para Wayland..."
+    
+    if [[ ! -f /etc/gdm/custom.conf ]]; then
+        warn "Arquivo /etc/gdm/custom.conf não encontrado, criando..."
+        mkdir -p /etc/gdm
+        cat > /etc/gdm/custom.conf << 'EOF'
+# Configuração do GDM - Gerenciador de Display do GNOME
+[daemon]
+# Habilita Wayland para melhor performance e compatibilidade
+WaylandEnable=true
+
+[security]
+
+[xdmcp]
+
+[chooser]
+
+[debug]
+EOF
+        success "Arquivo /etc/gdm/custom.conf criado com Wayland habilitado"
+        return
+    fi
+    
+    # Verificar se WaylandEnable existe no arquivo
+    if grep -q "WaylandEnable" /etc/gdm/custom.conf; then
+        # Se existe, substituir por true (descomentando se necessário)
+        sed -i 's/^#*\s*WaylandEnable.*/WaylandEnable=true/' /etc/gdm/custom.conf
+        info "WaylandEnable configurado para true"
+    else
+        # Se não existe, adicionar
+        if grep -q "\[daemon\]" /etc/gdm/custom.conf; then
+            # Adicionar após [daemon]
+            sed -i '/\[daemon\]/a WaylandEnable=true' /etc/gdm/custom.conf
+        else
+            # Adicionar seção [daemon] completa
+            echo -e "\n[daemon]\nWaylandEnable=true" >> /etc/gdm/custom.conf
+        fi
+        info "WaylandEnable adicionado e configurado para true"
+    fi
+    
+    success "GDM configurado para usar Wayland"
+}
+
 # ANÁLISE COMPLETA DO SISTEMA
 analyze_system() {
     step "Analisando capacidades do sistema..."
@@ -119,6 +164,18 @@ analyze_system() {
         local zswap_status=$(cat /sys/module/zswap/parameters/enabled 2>/dev/null || echo "N/A")
         echo -e "  🔄 ${CYAN}Zswap: $zswap_status${NC}"
     fi
+    
+    # 8. Verificar GDM
+    if [[ -f /etc/gdm/custom.conf ]]; then
+        local wayland_status=$(grep -i "WaylandEnable" /etc/gdm/custom.conf | tail -1)
+        if [[ -n "$wayland_status" ]]; then
+            echo -e "  🖥️  ${CYAN}GDM: $wayland_status${NC}"
+        else
+            echo -e "  🖥️  ${YELLOW}GDM: Wayland não configurado${NC}"
+        fi
+    else
+        echo -e "  🖥️  ${YELLOW}GDM: /etc/gdm/custom.conf não encontrado${NC}"
+    fi
 }
 
 # MOSTRAR OPÇÕES BASEADAS NA ANÁLISE
@@ -156,6 +213,10 @@ show_available_options() {
         ((option_number++))
     fi
     
+    echo "$option_number. 🖥️  Configurar GDM/Wayland APENAS"
+    AVAILABLE_OPTIONS+=("gdm_only")
+    ((option_number++))
+    
     echo "$option_number. 🛠️  Configuração MANUAL Avançada"
     AVAILABLE_OPTIONS+=("manual_mode")
     ((option_number++))
@@ -172,15 +233,13 @@ show_available_options() {
 configure_suspend_only() {
     step "Configurando modo SUSPENSÃO APENAS..."
     
-    # Kernel parameters
+    # Configurar GDM primeiro
+    configure_gdm_wayland
+    
+    # Kernel parameters - SEM amdgpu.runpm=0
     if [[ -f /etc/kernel/cmdline ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
         local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
-        
-        # Adicionar parâmetros para GPU se necessário
-        if [[ "$GPU_DRIVER" == "amdgpu" ]]; then
-            clean_cmdline="$clean_cmdline amdgpu.runpm=0"
-        fi
         
         echo "$clean_cmdline" > /etc/kernel/cmdline
         info "Parâmetros do kernel configurados para suspensão"
@@ -228,7 +287,10 @@ EOF
 configure_hibernate_only() {
     step "Configurando modo HIBERNAÇÃO APENAS..."
     
-    # Kernel parameters
+    # Configurar GDM primeiro
+    configure_gdm_wayland
+    
+    # Kernel parameters - SEM amdgpu.runpm=0
     if [[ -f /etc/kernel/cmdline && -n "$SWAP_UUID" ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
         local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
@@ -277,15 +339,14 @@ EOF
 configure_mixed_mode() {
     step "Configurando modo MISTO (Suspender → Hibernar)..."
     
-    # Kernel parameters
+    # Configurar GDM primeiro
+    configure_gdm_wayland
+    
+    # Kernel parameters - SEM amdgpu.runpm=0
     if [[ -f /etc/kernel/cmdline && -n "$SWAP_UUID" ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
         local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
         local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID"
-        
-        if [[ "$GPU_DRIVER" == "amdgpu" ]]; then
-            new_cmdline="$new_cmdline amdgpu.runpm=0"
-        fi
         
         echo "$new_cmdline" > /etc/kernel/cmdline
         info "Parâmetros do kernel configurados"
@@ -342,15 +403,14 @@ EOF
 configure_smart_mode() {
     step "Configurando modo INTELIGENTE (Recomendado)..."
     
-    # Kernel parameters
+    # Configurar GDM primeiro
+    configure_gdm_wayland
+    
+    # Kernel parameters - SEM amdgpu.runpm=0
     if [[ -f /etc/kernel/cmdline && -n "$SWAP_UUID" ]]; then
         local current_cmdline=$(cat /etc/kernel/cmdline)
         local clean_cmdline=$(echo "$current_cmdline" | sed -E 's/resume=[^ ]*//g')
         local new_cmdline="$clean_cmdline resume=UUID=$SWAP_UUID zswap.enabled=0"
-        
-        if [[ "$GPU_DRIVER" == "amdgpu" ]]; then
-            new_cmdline="$new_cmdline amdgpu.runpm=0"
-        fi
         
         echo "$new_cmdline" > /etc/kernel/cmdline
         info "Parâmetros do kernel configurados"
@@ -444,6 +504,13 @@ EOF
     success "Modo INTELIGENTE configurado!"
 }
 
+# CONFIGURAR APENAS GDM
+configure_gdm_only() {
+    step "Configurando apenas GDM/Wayland..."
+    configure_gdm_wayland
+    success "GDM configurado com Wayland habilitado!"
+}
+
 # VERIFICAR CONFIGURAÇÃO ATUAL
 check_current_config() {
     step "Verificando configuração atual..."
@@ -471,6 +538,14 @@ check_current_config() {
     # Swap
     echo -e "\n${BLUE}Swap:${NC}"
     swapon --show 2>/dev/null || echo "Nenhum swap ativo"
+    
+    # GDM
+    echo -e "\n${BLUE}GDM Config:${NC}"
+    if [[ -f /etc/gdm/custom.conf ]]; then
+        grep -v "^#" /etc/gdm/custom.conf | grep -v "^$" || echo "Arquivo vazio ou apenas comentários"
+    else
+        echo "Arquivo /etc/gdm/custom.conf não encontrado"
+    fi
 }
 
 # APLICAR CONFIGURAÇÕES
@@ -526,6 +601,7 @@ main() {
             "mixed_mode") configure_mixed_mode ;;
             "smart_mode") configure_smart_mode ;;
             "hybrid_mode") configure_hybrid_mode ;;
+            "gdm_only") configure_gdm_only ;;
             "manual_mode") configure_manual_mode ;;
             "check_config") check_current_config ;;
         esac
