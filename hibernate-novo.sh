@@ -425,80 +425,53 @@ configure_smart_mode() {
     # Systemd inteligente
     cat > /etc/systemd/logind.conf << 'EOF'
 [Login]
-HandlePowerKey=poweroff
+# TAMPA - Comportamento principal
+HandleLidSwitch=suspend-then-hibernate
+HandleLidSwitchExternalPower=suspend-then-hibernate
+HandleLidSwitchDocked=ignore
+
+# BOTÕES DE ENERGIA
+HandlePowerKey=suspend-then-hibernate
 HandleSuspendKey=suspend
 HandleHibernateKey=hibernate
-HandleLidSwitch=suspend-then-hibernate
-HandleLidSwitchExternalPower=suspend
-IdleAction=ignore
-HoldoffTimeoutSec=5s
-PowerKeyIgnoreInhibited=yes
-SuspendKeyIgnoreInhibited=yes
-HibernateKeyIgnoreInhibited=yes
-LidSwitchIgnoreInhibited=yes
 
-# =============================================================================
-# RESUMO EXECUTIVO - PARÂMETRO POR PARÂMETRO
-# =============================================================================
-#
-# 🎯 BOTÕES FÍSICOS:
-#   • HandlePowerKey=poweroff        → Botão de energia DESLIGA o sistema
-#   • HandleSuspendKey=suspend       → Botão de suspensão SUSPENDE o sistema  
-#   • HandleHibernateKey=hibernate   → Botão de hibernação HIBERNA o sistema
-#
-# 🖐️ TAMPA DO LAPTOP:
-#   • HandleLidSwitch=suspend-then-hibernate → Tampa em bateria: SUSPENDE→HIBERNA
-#   • HandleLidSwitchExternalPower=suspend   → Tampa na tomada: apenas SUSPENDE
-#   • HoldoffTimeoutSec=5s           → Espera 5s entre suspender e hibernar
-#
-# 🚫 IGNORAR BLOQUEIOS:
-#   • PowerKeyIgnoreInhibited=yes    → Ignora apps que bloqueiam DESLIGAMENTO
-#   • SuspendKeyIgnoreInhibited=yes  → Ignora apps que bloqueiam SUSPENSÃO
-#   • HibernateKeyIgnoreInhibited=yes → Ignora apps que bloqueiam HIBERNAÇÃO
-#   • LidSwitchIgnoreInhibited=yes   → Ignora apps que bloqueiam AÇÃO DA TAMPA
-#
-# ⏰ COMPORTAMENTO AUTOMÁTICO:
-#   • IdleAction=ignore              → Nenhuma ação automática por inatividade
-#
-# 💡 PERFIL: Controle manual com segurança de hibernação em bateria.
-#    Sistema sempre responde aos botões/tampa, ignorando bloqueios.
-# =============================================================================
+# TEMPOS para suspend-then-hibernate (2 horas = 7200 segundos)
+HoldoffTimeoutSec=30s
+IdleAction=suspend-then-hibernate
+IdleActionSec=1800
+
+# BATERIA CRÍTICA
+HandleBatteryCriticalLevel=5%
+HandleBatteryCriticalAction=hibernate
+
+# CONFIGURAÇÕES GLOBAIS
+NAutoVTs=6
+ReserveVT=6
+KillUserProcesses=no
+KillOnlyUsers=
+KillExcludeUsers=root
+InhibitDelayMaxSec=5
+UserStopDelaySec=10
 EOF
 
     cat > /etc/systemd/sleep.conf << 'EOF'
 [Sleep]
+# Suspender ao fechar tampa (instantâneo)
+HandleLidSwitch=suspend
+HandleLidSwitchExternalPower=suspend
+HandleLidSwitchDocked=ignore
+
+# Hibernar após 2 horas de suspensão (segurança)
+HibernateDelaySec=7200
+
+# Modo de suspensão confiável (evita tela preta)
 AllowSuspend=yes
 AllowHibernation=yes
-AllowHybridSleep=no
-AllowSuspendThenHibernate=yes
-SuspendState=freeze
-HibernateDelaySec=50m
-HibernateOnACPower=no
-
-# =============================================================================
-# RESUMO EXECUTIVO - PARÂMETRO POR PARÂMETRO
-# =============================================================================
-#
-# 🎯 PERMISSÕES DE ESTADOS:
-#   • AllowSuspend=yes               → PERMITE suspensão tradicional (S3)
-#   • AllowHibernation=yes           → PERMITE hibernação completa (S4)
-#   • AllowHybridSleep=no            → BLOQUEIA hibernação híbrida (S3+S4)
-#   • AllowSuspendThenHibernate=yes  → PERMITE suspensão→hibernação automática
-#
-# ⚙️ CONFIGURAÇÕES TÉCNICAS:
-#   • SuspendState=freeze            → Usa modo de suspensão MODERNO e RÁPIDO
-#   • HibernateDelaySec=50m          → Espera 50minutos antes de hibernar
-#   • HibernateOnACPower=no          → NUNCA hiberna quando conectado na tomada
-#
-# 🔄 FLUXO OPERACIONAL:
-#   1. Evento de suspensão → Entra em "freeze" (SuspendState=freeze)
-#   2. Se em bateria → Aguarda 50min (HibernateDelaySec=50m) 
-#   3. Se ainda suspenso → Hiberna (AllowSuspendThenHibernate=yes)
-#   4. Se na tomada → Permanece suspenso (HibernateOnACPower=no)
-#
-# 💡 PERFIL: Suspensão rápida com segurança de hibernação prolongada em bateria.
-#    Ideal para laptops com uso intermitente e boa autonomia energética.
-# =============================================================================
+AllowHybridSleep=yes
+SuspendMode=suspend
+SuspendState=mem
+HibernateMode=platform
+HibernateState=disk
 EOF
 
     success "Modo INTELIGENTE configurado!"
