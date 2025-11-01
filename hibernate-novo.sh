@@ -17,7 +17,6 @@ NC='\033[0m'
 # Variáveis de capacidade do sistema
 CAN_SUSPEND=false
 CAN_HIBERNATE=false
-CAN_HYBRID=false
 SWAP_UUID=""
 GPU_DRIVER=""
 MEM_SLEEP_MODE=""
@@ -234,14 +233,6 @@ analyze_system() {
         echo -e "  ❌ ${RED}Hibernação NÃO suportada${NC}"
     fi
     
-    # Hybrid sleep
-    if $CAN_SUSPEND && $CAN_HIBERNATE; then
-        CAN_HYBRID=true
-        echo -e "  ✅ ${GREEN}Hybrid Sleep suportado${NC}"
-    else
-        echo -e "  ❌ ${RED}Hybrid Sleep NÃO suportado${NC}"
-    fi
-    
     # Detectar GPU
     GPU_DRIVER=$(lspci -k 2>/dev/null | grep -A 2 "VGA" | grep "Kernel driver in use" | cut -d: -f2 | tr -d ' ' | head -1)
     [[ -n "$GPU_DRIVER" ]] && echo -e "  🎮 ${CYAN}GPU: $GPU_DRIVER${NC}"
@@ -283,24 +274,17 @@ show_available_options() {
     local i=1
     AVAILABLE_OPTIONS=()
     
-    # Modo MISTO
-    if $CAN_SUSPEND && $CAN_HIBERNATE; then
-        echo "$i. 🔄 Modo MISTO (Suspender → Hibernar)"
-        AVAILABLE_OPTIONS+=("mixed_mode")
+    # Suspensão
+    if $CAN_SUSPEND; then
+        echo "$i. ⚡ SUSPENSÃO (Básica)"
+        AVAILABLE_OPTIONS+=("suspend_only")
         ((i++))
     fi
     
-    # Modo INTELIGENTE
+    # Suspensão e Hibernação Inteligente
     if $CAN_SUSPEND && $CAN_HIBERNATE; then
-        echo "$i. 🎯 Modo INTELIGENTE (Recomendado)"
+        echo "$i. 🔄 SUSPENSÃO E HIBERNAÇÃO (Inteligente - Recomendado)"
         AVAILABLE_OPTIONS+=("smart_mode")
-        ((i++))
-    fi
-    
-    # Modo HYBRID SLEEP
-    if $CAN_HYBRID; then
-        echo "$i. 🔋 Modo HYBRID SLEEP"
-        AVAILABLE_OPTIONS+=("hybrid_mode")
         ((i++))
     fi
     
@@ -319,15 +303,15 @@ show_available_options() {
     echo -e "\n0. ❌ Sair"
 }
 
-# CONFIGURAÇÕES ESPECÍFICAS
+# CONFIGURAÇÃO SUSPENSÃO BÁSICA
 configure_suspend_only() {
-    step "Configurando SUSPENSÃO APENAS..."
+    step "Configurando modo SUSPENSÃO BÁSICA..."
     configure_gdm_wayland
     [[ -n "$SWAP_UUID" ]] && add_kernel_param "resume" "UUID=$SWAP_UUID"
     add_mkinitcpio_hook
     
-    add_config "/etc/systemd/logind.conf" "" "=== CONFIGURAÇÃO DE ENERGIA - SUSPENSÃO ==="
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=poweroff" "Botão de energia: desligar"
+    add_config "/etc/systemd/logind.conf" "" "=== CONFIGURAÇÃO DE ENERGIA - SUSPENSÃO BÁSICA ==="
+    add_config "/etc/systemd/logind.conf" "HandlePowerKey=suspend" "Botão de energia: suspender"
     add_config "/etc/systemd/logind.conf" "HandleSuspendKey=suspend" "Botão de suspensão: suspender"
     add_config "/etc/systemd/logind.conf" "HandleHibernateKey=suspend" "Botão de hibernação: suspender"
     add_config "/etc/systemd/logind.conf" "HandleLidSwitch=suspend" "Fechar tampa (bateria): suspender"
@@ -335,42 +319,20 @@ configure_suspend_only() {
     add_config "/etc/systemd/logind.conf" "IdleAction=suspend" "Inatividade: suspender após 30min"
     add_config "/etc/systemd/logind.conf" "IdleActionSec=30m" ""
     
-    add_config "/etc/systemd/sleep.conf" "" "=== CONFIGURAÇÃO DE SUSPENSÃO ==="
+    add_config "/etc/systemd/sleep.conf" "" "=== CONFIGURAÇÃO DE SUSPENSÃO BÁSICA ==="
     add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" "Permitir suspensão: SIM"
     add_config "/etc/systemd/sleep.conf" "AllowHibernation=no" "Permitir hibernação: NÃO"
     add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=no" "Permitir hybrid sleep: NÃO"
     add_config "/etc/systemd/sleep.conf" "AllowSuspendThenHibernate=no" "Permitir suspender→hibernar: NÃO"
-    add_config "/etc/systemd/sleep.conf" "SuspendState=freeze" "Modo de suspensão: freeze"
+    add_config "/etc/systemd/sleep.conf" "SuspendMode=suspend" "Modo suspensão: suspend"
+    add_config "/etc/systemd/sleep.conf" "SuspendState=mem" "Estado suspensão: mem"
     
-    success "Modo SUSPENSÃO configurado!"
+    success "Modo SUSPENSÃO BÁSICA configurado!"
 }
 
-configure_hibernate_only() {
-    step "Configurando HIBERNAÇÃO APENAS..."
-    configure_gdm_wayland
-    [[ -n "$SWAP_UUID" ]] && add_kernel_param "resume" "UUID=$SWAP_UUID"
-    add_mkinitcpio_hook
-    
-    add_config "/etc/systemd/logind.conf" "" "=== CONFIGURAÇÃO DE ENERGIA - HIBERNAÇÃO ==="
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=poweroff" "Botão de energia: desligar"
-    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=hibernate" "Botão de suspensão: hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=hibernate" "Botão de hibernação: hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=hibernate" "Fechar tampa (bateria): hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=suspend" "Fechar tampa (tomada): suspender"
-    add_config "/etc/systemd/logind.conf" "IdleAction=hibernate" "Inatividade: hibernar após 60min"
-    add_config "/etc/systemd/logind.conf" "IdleActionSec=60m" ""
-    
-    add_config "/etc/systemd/sleep.conf" "" "=== CONFIGURAÇÃO DE HIBERNAÇÃO ==="
-    add_config "/etc/systemd/sleep.conf" "AllowSuspend=no" "Permitir suspensão: NÃO"
-    add_config "/etc/systemd/sleep.conf" "AllowHibernation=yes" "Permitir hibernação: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=no" "Permitir hybrid sleep: NÃO"
-    add_config "/etc/systemd/sleep.conf" "AllowSuspendThenHibernate=no" "Permitir suspender→hibernar: NÃO"
-    
-    success "Modo HIBERNAÇÃO configurado!"
-}
-
+# CONFIGURAÇÃO SUSPENSÃO E HIBERNAÇÃO INTELIGENTE
 configure_smart_mode() {
-    step "Configurando MODO INTELIGENTE..."
+    step "Configurando modo SUSPENSÃO E HIBERNAÇÃO INTELIGENTE..."
     configure_gdm_wayland
     [[ -n "$SWAP_UUID" ]] && {
         add_kernel_param "resume" "UUID=$SWAP_UUID"
@@ -378,95 +340,48 @@ configure_smart_mode() {
     }
     add_mkinitcpio_hook
     
-    add_config "/etc/systemd/logind.conf" "" "=== CONFIGURAÇÃO INTELIGENTE DE ENERGIA ==="
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=suspend-then-hibernate" "Fechar tampa: suspender→hibernar (2h)"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=suspend-then-hibernate" "Fechar tampa (tomada): suspender→hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchDocked=ignore" "Fechar tampa (dock): ignorar"
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=suspend-then-hibernate" "Botão de energia: suspender→hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=suspend" "Botão de suspensão: suspender"
-    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=hibernate" "Botão de hibernação: hibernar"
-    add_config "/etc/systemd/logind.conf" "HoldoffTimeoutSec=30s" "Tempo espera suspend→hibernate: 30s"
-    add_config "/etc/systemd/logind.conf" "IdleAction=suspend-then-hibernate" "Inatividade: suspender→hibernar após 30min"
+    # Configuração exata do logind.conf conforme solicitado
+    add_config "/etc/systemd/logind.conf" "" "# TAMPA - Comportamento principal"
+    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=suspend-then-hibernate" ""
+    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=suspend-then-hibernate" ""
+    add_config "/etc/systemd/logind.conf" "HandleLidSwitchDocked=ignore" ""
+    add_config "/etc/systemd/logind.conf" "" "# BOTÕES DE ENERGIA"
+    add_config "/etc/systemd/logind.conf" "HandlePowerKey=suspend-then-hibernate" ""
+    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=suspend" ""
+    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=hibernate" ""
+    add_config "/etc/systemd/logind.conf" "" "# TEMPOS para suspend-then-hibernate (2 horas = 7200 segundos)"
+    add_config "/etc/systemd/logind.conf" "HoldoffTimeoutSec=30s" ""
+    add_config "/etc/systemd/logind.conf" "IdleAction=suspend-then-hibernate" ""
     add_config "/etc/systemd/logind.conf" "IdleActionSec=1800" ""
-    add_config "/etc/systemd/logind.conf" "HandleBatteryCriticalLevel=5%" "Bateria crítica: 5%"
-    add_config "/etc/systemd/logind.conf" "HandleBatteryCriticalAction=hibernate" "Ação bateria crítica: hibernar"
+    add_config "/etc/systemd/logind.conf" "" "# BATERIA CRÍTICA"
+    add_config "/etc/systemd/logind.conf" "HandleBatteryCriticalLevel=5%" ""
+    add_config "/etc/systemd/logind.conf" "HandleBatteryCriticalAction=hibernate" ""
+    add_config "/etc/systemd/logind.conf" "" "# CONFIGURAÇÕES GLOBAIS"
+    add_config "/etc/systemd/logind.conf" "NAutoVTs=6" ""
+    add_config "/etc/systemd/logind.conf" "ReserveVT=6" ""
+    add_config "/etc/systemd/logind.conf" "KillUserProcesses=no" ""
+    add_config "/etc/systemd/logind.conf" "KillOnlyUsers=" ""
+    add_config "/etc/systemd/logind.conf" "KillExcludeUsers=root" ""
+    add_config "/etc/systemd/logind.conf" "InhibitDelayMaxSec=5" ""
+    add_config "/etc/systemd/logind.conf" "UserStopDelaySec=10" ""
     
-    add_config "/etc/systemd/sleep.conf" "" "=== CONFIGURAÇÃO INTELIGENTE DE SUSPENSÃO ==="
-    add_config "/etc/systemd/sleep.conf" "HandleLidSwitch=suspend" "Fechar tampa: suspensão instantânea"
-    add_config "/etc/systemd/sleep.conf" "HandleLidSwitchExternalPower=suspend" "Fechar tampa (tomada): suspensão"
-    add_config "/etc/systemd/sleep.conf" "HandleLidSwitchDocked=ignore" "Fechar tampa (dock): ignorar"
-    add_config "/etc/systemd/sleep.conf" "HibernateDelaySec=7200" "Hibernar após suspensão: 2 horas"
-    add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" "Permitir suspensão: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHibernation=yes" "Permitir hibernação: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=yes" "Permitir hybrid sleep: SIM"
-    add_config "/etc/systemd/sleep.conf" "SuspendMode=suspend" "Modo suspensão: suspend"
-    add_config "/etc/systemd/sleep.conf" "SuspendState=mem" "Estado suspensão: mem"
-    add_config "/etc/systemd/sleep.conf" "HibernateMode=platform" "Modo hibernação: platform"
-    add_config "/etc/systemd/sleep.conf" "HibernateState=disk" "Estado hibernação: disk"
+    # Configuração exata do sleep.conf conforme solicitado
+    add_config "/etc/systemd/sleep.conf" "" "# Suspender ao fechar tampa (instantâneo)"
+    add_config "/etc/systemd/sleep.conf" "HandleLidSwitch=suspend" ""
+    add_config "/etc/systemd/sleep.conf" "HandleLidSwitchExternalPower=suspend" ""
+    add_config "/etc/systemd/sleep.conf" "HandleLidSwitchDocked=ignore" ""
+    add_config "/etc/systemd/sleep.conf" "" "# Hibernar após 2 horas de suspensão (segurança)"
+    add_config "/etc/systemd/sleep.conf" "HibernateDelaySec=7200" ""
+    add_config "/etc/systemd/sleep.conf" "" "# Modo de suspensão confiável (evita tela preta)"
+    add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" ""
+    add_config "/etc/systemd/sleep.conf" "AllowHibernation=yes" ""
+    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=yes" ""
+    add_config "/etc/systemd/sleep.conf" "SuspendMode=suspend" ""
+    add_config "/etc/systemd/sleep.conf" "SuspendState=mem" ""
+    add_config "/etc/systemd/sleep.conf" "HibernateMode=platform" ""
+    add_config "/etc/systemd/sleep.conf" "HibernateState=disk" ""
     
-    success "Modo INTELIGENTE configurado!"
-}
-
-configure_mixed_mode() {
-    step "Configurando MODO MISTO..."
-    configure_gdm_wayland
-    [[ -n "$SWAP_UUID" ]] && add_kernel_param "resume" "UUID=$SWAP_UUID"
-    add_mkinitcpio_hook
-    
-    # Criar script para modo misto
-    cat > /usr/local/bin/smart-suspend-hibernate.sh << 'EOF'
-#!/bin/bash
-logger "Modo Misto: Suspender → Hibernar após 30min"
-systemctl suspend
-sleep 30m
-systemctl hibernate
-EOF
-    chmod +x /usr/local/bin/smart-suspend-hibernate.sh
-    
-    add_config "/etc/systemd/logind.conf" "" "=== MODO MISTO (Suspender → Hibernar) ==="
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=poweroff" "Botão de energia: desligar"
-    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=suspend" "Botão de suspensão: suspender"
-    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=hibernate" "Botão de hibernação: hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=exec /usr/local/bin/smart-suspend-hibernate.sh" "Fechar tampa: suspender→hibernar (30min)"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=suspend" "Fechar tampa (tomada): suspender"
-    add_config "/etc/systemd/logind.conf" "IdleAction=suspend" "Inatividade: suspender após 30min"
-    add_config "/etc/systemd/logind.conf" "IdleActionSec=30m" ""
-    
-    add_config "/etc/systemd/sleep.conf" "" "=== MODO MISTO ==="
-    add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" "Permitir suspensão: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHibernation=yes" "Permitir hibernação: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=no" "Permitir hybrid sleep: NÃO"
-    add_config "/etc/systemd/sleep.conf" "AllowSuspendThenHibernate=no" "Permitir suspender→hibernar: NÃO"
-    add_config "/etc/systemd/sleep.conf" "SuspendState=freeze" "Modo de suspensão: freeze"
-    
-    success "Modo MISTO configurado!"
-}
-
-configure_hybrid_mode() {
-    step "Configurando HYBRID SLEEP..."
-    configure_gdm_wayland
-    [[ -n "$SWAP_UUID" ]] && add_kernel_param "resume" "UUID=$SWAP_UUID"
-    add_mkinitcpio_hook
-    
-    add_config "/etc/systemd/logind.conf" "" "=== HYBRID SLEEP ==="
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=poweroff" "Botão de energia: desligar"
-    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=hybrid-sleep" "Botão de suspensão: hybrid-sleep"
-    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=hibernate" "Botão de hibernação: hibernar"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=hybrid-sleep" "Fechar tampa: hybrid-sleep"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=hybrid-sleep" "Fechar tampa (tomada): hybrid-sleep"
-    add_config "/etc/systemd/logind.conf" "IdleAction=hybrid-sleep" "Inatividade: hybrid-sleep após 30min"
-    add_config "/etc/systemd/logind.conf" "IdleActionSec=30m" ""
-    
-    add_config "/etc/systemd/sleep.conf" "" "=== HYBRID SLEEP ==="
-    add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" "Permitir suspensão: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHibernation=yes" "Permitir hibernação: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=yes" "Permitir hybrid sleep: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowSuspendThenHibernate=no" "Permitir suspender→hibernar: NÃO"
-    add_config "/etc/systemd/sleep.conf" "SuspendState=freeze" "Modo suspensão: freeze"
-    add_config "/etc/systemd/sleep.conf" "HibernateState=disk" "Estado hibernação: disk"
-    add_config "/etc/systemd/sleep.conf" "HybridSleepState=disk" "Estado hybrid sleep: disk"
-    
-    success "Modo HYBRID SLEEP configurado!"
+    success "Modo SUSPENSÃO E HIBERNAÇÃO INTELIGENTE configurado!"
 }
 
 configure_gdm_only() {
@@ -520,7 +435,7 @@ check_current_config() {
     # Systemd logind
     echo -e "\n${BLUE}Systemd Logind:${NC}"
     if [[ -f /etc/systemd/logind.conf ]]; then
-        grep -E "^(Handle|IdleAction|HoldoffTimeout|HandleBattery)" /etc/systemd/logind.conf 2>/dev/null | while read -r line; do
+        cat /etc/systemd/logind.conf | grep -v "^#" | grep -v "^$" | while read -r line; do
             echo "  📝 $line"
         done || echo "  ℹ️  Nenhuma configuração específica"
     else
@@ -530,7 +445,7 @@ check_current_config() {
     # Systemd sleep
     echo -e "\n${BLUE}Systemd Sleep:${NC}"
     if [[ -f /etc/systemd/sleep.conf ]]; then
-        grep -E "^(Allow|Handle|HibernateDelay|Suspend|Hibernate)" /etc/systemd/sleep.conf 2>/dev/null | while read -r line; do
+        cat /etc/systemd/sleep.conf | grep -v "^#" | grep -v "^$" | while read -r line; do
             echo "  📝 $line"
         done || echo "  ℹ️  Nenhuma configuração específica"
     else
@@ -581,10 +496,7 @@ main() {
     if [[ $choice -gt 0 && $choice -le ${#AVAILABLE_OPTIONS[@]} ]]; then
         case "${AVAILABLE_OPTIONS[$((choice-1))]}" in
             suspend_only) configure_suspend_only ;;
-            hibernate_only) configure_hibernate_only ;;
-            mixed_mode) configure_mixed_mode ;;
             smart_mode) configure_smart_mode ;;
-            hybrid_mode) configure_hybrid_mode ;;
             gdm_only) configure_gdm_only ;;
             fix_mkinitcpio) fix_mkinitcpio_manual ;;
             check_config) check_current_config ;;
