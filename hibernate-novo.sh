@@ -45,7 +45,6 @@ show_header() {
 fix_mkinitcpio_conf() {
     [[ -f /etc/mkinitcpio.conf ]] || { warn "Arquivo /etc/mkinitcpio.conf não encontrado"; return 1; }
     
-    # Remover linhas "resume" soltas se existirem
     grep -q "^resume" /etc/mkinitcpio.conf && {
         warn "Arquivo mkinitcpio.conf corrompido detectado. Corrigindo..."
         sed -i '/^resume/d' /etc/mkinitcpio.conf
@@ -67,10 +66,8 @@ add_mkinitcpio_hook() {
     local hooks_line=$(grep "^HOOKS=" /etc/mkinitcpio.conf 2>/dev/null)
     [[ -n "$hooks_line" ]] || { error "Linha HOOKS não encontrada"; return 1; }
     
-    # Extrair e adicionar hook mantendo a formatação original
     if [[ $hooks_line =~ HOOKS=\((.*)\) ]]; then
         local current_hooks="${BASH_REMATCH[1]}"
-        # Adicionar resume após fsck ou no final
         if [[ $current_hooks =~ (.*fsck)(.*) ]]; then
             sed -i "s/^HOOKS=($current_hooks)/HOOKS=(${BASH_REMATCH[1]} resume${BASH_REMATCH[2]})/" /etc/mkinitcpio.conf
         else
@@ -99,41 +96,21 @@ add_kernel_param() {
     info "Parâmetro $1=$2 adicionado"
 }
 
-# ADICIONAR CONFIGURAÇÃO COM COMENTÁRIO
-add_config() {
-    local file="$1" config="$2" comment="$3"
-    
-    # Criar arquivo se não existir
-    [[ -f "$file" ]] || touch "$file"
-    
-    # Remover configuração existente se houver
-    [[ -n "$config" ]] && grep -q "^$config" "$file" 2>/dev/null && sed -i "/^$config/d" "$file"
-    
-    # Adicionar comentário e configuração
-    [[ -n "$comment" ]] && echo "# $comment" >> "$file"
-    [[ -n "$config" ]] && echo "$config" >> "$file"
-}
-
 # CONFIGURAR GDM/WAYLAND
 configure_gdm_wayland() {
     step "Configurando GDM para Wayland..."
     
     if [[ ! -f /etc/gdm/custom.conf ]]; then
         mkdir -p /etc/gdm
-        cat > /etc/gdm/custom.conf << 'EOF'
-[daemon]
-WaylandEnable=true
-EOF
+        echo -e "[daemon]\nWaylandEnable=true" > /etc/gdm/custom.conf
         success "Arquivo /etc/gdm/custom.conf criado"
         return
     fi
     
-    # Apenas modificar o parâmetro WaylandEnable
     if grep -q "^WaylandEnable" /etc/gdm/custom.conf; then
         sed -i 's/^WaylandEnable.*/WaylandEnable=true/' /etc/gdm/custom.conf
         info "WaylandEnable atualizado para true"
     else
-        # Adicionar após [daemon]
         sed -i '/\[daemon\]/a WaylandEnable=true' /etc/gdm/custom.conf
         info "WaylandEnable adicionado"
     fi
@@ -147,63 +124,42 @@ show_current_config_summary() {
     
     local has_config=false
     
-    # Verificar kernel parameters
-    if kernel_param_exists "resume"; then
+    kernel_param_exists "resume" && {
         echo -e "  ✅ ${GREEN}Kernel: Hibernação configurada (resume=UUID)$NC"
         has_config=true
-    fi
+    }
     
-    if kernel_param_exists "zswap.enabled"; then
+    kernel_param_exists "zswap.enabled" && {
         local zswap_value=$(grep -o 'zswap.enabled=[^ ]*' /etc/kernel/cmdline | cut -d= -f2)
         echo -e "  ✅ ${GREEN}Kernel: Zswap $zswap_value$NC"
         has_config=true
-    fi
+    }
     
-    # Verificar mkinitcpio
-    if hook_exists; then
+    hook_exists && {
         echo -e "  ✅ ${GREEN}Initramfs: Hook resume ativo$NC"
         has_config=true
-    fi
+    }
     
-    # Verificar systemd logind
-    if [[ -f /etc/systemd/logind.conf ]]; then
+    [[ -f /etc/systemd/logind.conf ]] && {
         local lid_switch=$(grep "^HandleLidSwitch=" /etc/systemd/logind.conf 2>/dev/null | tail -1)
         local lid_external=$(grep "^HandleLidSwitchExternalPower=" /etc/systemd/logind.conf 2>/dev/null | tail -1)
         
-        if [[ -n "$lid_switch" ]]; then
+        [[ -n "$lid_switch" ]] && {
             echo -e "  ✅ ${GREEN}Logind: Tampa (bateria) = ${lid_switch#*=}$NC"
             has_config=true
-        fi
-        if [[ -n "$lid_external" ]]; then
+        }
+        [[ -n "$lid_external" ]] && {
             echo -e "  ✅ ${GREEN}Logind: Tampa (tomada) = ${lid_external#*=}$NC"
             has_config=true
-        fi
-    fi
+        }
+    }
     
-    # Verificar systemd sleep
-    if [[ -f /etc/systemd/sleep.conf ]]; then
-        local allow_suspend=$(grep "^AllowSuspend=" /etc/systemd/sleep.conf 2>/dev/null | tail -1)
-        local allow_hibernate=$(grep "^AllowHibernation=" /etc/systemd/sleep.conf 2>/dev/null | tail -1)
-        
-        if [[ -n "$allow_suspend" ]]; then
-            echo -e "  ✅ ${GREEN}Sleep: Suspensão = ${allow_suspend#*=}$NC"
-            has_config=true
-        fi
-        if [[ -n "$allow_hibernate" ]]; then
-            echo -e "  ✅ ${GREEN}Sleep: Hibernação = ${allow_hibernate#*=}$NC"
-            has_config=true
-        fi
-    fi
-    
-    # Verificar GDM
-    if [[ -f /etc/gdm/custom.conf ]] && grep -q "^WaylandEnable=true" /etc/gdm/custom.conf; then
+    [[ -f /etc/gdm/custom.conf ]] && grep -q "^WaylandEnable=true" /etc/gdm/custom.conf && {
         echo -e "  ✅ ${GREEN}GDM: Wayland ativo$NC"
         has_config=true
-    fi
+    }
     
-    if ! $has_config; then
-        echo -e "  ℹ️  ${YELLOW}Nenhuma configuração de energia específica detectada$NC"
-    fi
+    $has_config || echo -e "  ℹ️  ${YELLOW}Nenhuma configuração de energia específica detectada$NC"
 }
 
 # ANÁLISE DO SISTEMA
@@ -212,16 +168,12 @@ analyze_system() {
     
     echo -e "\n${CYAN}=== DETECÇÃO DE HARDWARE ===${NC}"
     
-    # Verificar suspensão
-    if [[ -f /sys/power/state ]] && grep -q "freeze\|mem" /sys/power/state; then
+    [[ -f /sys/power/state ]] && grep -q "freeze\|mem" /sys/power/state && {
         CAN_SUSPEND=true
         echo -e "  ✅ ${GREEN}Suspensão suportada${NC}"
-    else
-        echo -e "  ❌ ${RED}Suspensão NÃO suportada${NC}"
-    fi
+    } || echo -e "  ❌ ${RED}Suspensão NÃO suportada${NC}"
     
-    # Verificar hibernação
-    if [[ -f /sys/power/disk ]] && swapon --show &>/dev/null; then
+    [[ -f /sys/power/disk ]] && swapon --show &>/dev/null && {
         CAN_HIBERNATE=true
         SWAP_UUID=$(blkid -s UUID -o value $(swapon --show=name --noheadings | head -1) 2>/dev/null)
         local swap_size=$(swapon --show=SIZE --noheadings | head -1)
@@ -229,41 +181,27 @@ analyze_system() {
         echo -e "  ✅ ${GREEN}Hibernação suportada${NC}"
         echo -e "     💾 Swap: $swap_size | RAM: ${ram_size}GB"
         [[ -n "$SWAP_UUID" ]] && echo -e "     🔑 UUID: $SWAP_UUID"
-    else
-        echo -e "  ❌ ${RED}Hibernação NÃO suportada${NC}"
-    fi
+    } || echo -e "  ❌ ${RED}Hibernação NÃO suportada${NC}"
     
-    # Detectar GPU
     GPU_DRIVER=$(lspci -k 2>/dev/null | grep -A 2 "VGA" | grep "Kernel driver in use" | cut -d: -f2 | tr -d ' ' | head -1)
     [[ -n "$GPU_DRIVER" ]] && echo -e "  🎮 ${CYAN}GPU: $GPU_DRIVER${NC}"
     
-    # Modo de suspensão
-    if [[ -f /sys/power/mem_sleep ]]; then
+    [[ -f /sys/power/mem_sleep ]] && {
         MEM_SLEEP_MODE=$(grep -o '\[[^]]*\]' /sys/power/mem_sleep | tr -d '[]' | head -1)
         echo -e "  💤 ${CYAN}Modo de suspensão: $MEM_SLEEP_MODE${NC}"
-    fi
+    }
     
-    # Systemd-boot
-    if [[ -f /etc/kernel/cmdline ]]; then
+    [[ -f /etc/kernel/cmdline ]] && {
         echo -e "  🐧 ${CYAN}Bootloader: systemd-boot detectado${NC}"
-        local current_params=$(cat /etc/kernel/cmdline)
-        echo -e "     📋 $current_params"
-    else
-        echo -e "  ❌ ${RED}systemd-boot NÃO detectado${NC}"
-    fi
+        echo -e "     📋 $(cat /etc/kernel/cmdline)"
+    } || echo -e "  ❌ ${RED}systemd-boot NÃO detectado${NC}"
     
-    # GDM
-    if [[ -f /etc/gdm/custom.conf ]]; then
-        if grep -q "WaylandEnable=true" /etc/gdm/custom.conf; then
-            echo -e "  🖥️  ${GREEN}GDM: Wayland habilitado${NC}"
-        else
-            echo -e "  🖥️  ${YELLOW}GDM: Wayland não configurado${NC}"
-        fi
-    else
-        echo -e "  🖥️  ${YELLOW}GDM: /etc/gdm/custom.conf não encontrado${NC}"
-    fi
+    [[ -f /etc/gdm/custom.conf ]] && {
+        grep -q "WaylandEnable=true" /etc/gdm/custom.conf && \
+        echo -e "  🖥️  ${GREEN}GDM: Wayland habilitado${NC}" || \
+        echo -e "  🖥️  ${YELLOW}GDM: Wayland não configurado${NC}"
+    } || echo -e "  🖥️  ${YELLOW}GDM: /etc/gdm/custom.conf não encontrado${NC}"
     
-    # Mostrar resumo das configurações ativas
     show_current_config_summary
 }
 
@@ -274,21 +212,18 @@ show_available_options() {
     local i=1
     AVAILABLE_OPTIONS=()
     
-    # Suspensão
-    if $CAN_SUSPEND; then
+    $CAN_SUSPEND && {
         echo "$i. ⚡ SUSPENSÃO (Básica)"
         AVAILABLE_OPTIONS+=("suspend_only")
         ((i++))
-    fi
+    }
     
-    # Suspensão e Hibernação Inteligente
-    if $CAN_SUSPEND && $CAN_HIBERNATE; then
+    $CAN_SUSPEND && $CAN_HIBERNATE && {
         echo "$i. 🔄 SUSPENSÃO E HIBERNAÇÃO (Inteligente - Recomendado)"
         AVAILABLE_OPTIONS+=("smart_mode")
         ((i++))
-    fi
+    }
     
-    # Opções básicas
     echo "$i. 🖥️  Configurar GDM/Wayland APENAS"
     AVAILABLE_OPTIONS+=("gdm_only")
     ((i++))
@@ -310,22 +245,23 @@ configure_suspend_only() {
     [[ -n "$SWAP_UUID" ]] && add_kernel_param "resume" "UUID=$SWAP_UUID"
     add_mkinitcpio_hook
     
-    add_config "/etc/systemd/logind.conf" "" "=== CONFIGURAÇÃO DE ENERGIA - SUSPENSÃO BÁSICA ==="
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=suspend" "Botão de energia: suspender"
-    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=suspend" "Botão de suspensão: suspender"
-    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=suspend" "Botão de hibernação: suspender"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=suspend" "Fechar tampa (bateria): suspender"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=suspend" "Fechar tampa (tomada): suspender"
-    add_config "/etc/systemd/logind.conf" "IdleAction=suspend" "Inatividade: suspender após 30min"
-    add_config "/etc/systemd/logind.conf" "IdleActionSec=30m" ""
+    # Configurar logind.conf - APENAS ADICIONAR NO FINAL
+    echo -e "\n# === CONFIGURAÇÃO DE ENERGIA - SUSPENSÃO BÁSICA ===" >> /etc/systemd/logind.conf
+    echo "HandlePowerKey=suspend" >> /etc/systemd/logind.conf
+    echo "HandleSuspendKey=suspend" >> /etc/systemd/logind.conf
+    echo "HandleHibernateKey=suspend" >> /etc/systemd/logind.conf
+    echo "HandleLidSwitch=suspend" >> /etc/systemd/logind.conf
+    echo "HandleLidSwitchExternalPower=suspend" >> /etc/systemd/logind.conf
+    echo "IdleAction=suspend" >> /etc/systemd/logind.conf
+    echo "IdleActionSec=30m" >> /etc/systemd/logind.conf
     
-    add_config "/etc/systemd/sleep.conf" "" "=== CONFIGURAÇÃO DE SUSPENSÃO BÁSICA ==="
-    add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" "Permitir suspensão: SIM"
-    add_config "/etc/systemd/sleep.conf" "AllowHibernation=no" "Permitir hibernação: NÃO"
-    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=no" "Permitir hybrid sleep: NÃO"
-    add_config "/etc/systemd/sleep.conf" "AllowSuspendThenHibernate=no" "Permitir suspender→hibernar: NÃO"
-    add_config "/etc/systemd/sleep.conf" "SuspendMode=suspend" "Modo suspensão: suspend"
-    add_config "/etc/systemd/sleep.conf" "SuspendState=mem" "Estado suspensão: mem"
+    # Configurar sleep.conf - APENAS ADICIONAR NO FINAL
+    echo -e "\n# === CONFIGURAÇÃO DE SUSPENSÃO BÁSICA ===" >> /etc/systemd/sleep.conf
+    echo "AllowSuspend=yes" >> /etc/systemd/sleep.conf
+    echo "AllowHibernation=no" >> /etc/systemd/sleep.conf
+    echo "AllowHybridSleep=no" >> /etc/systemd/sleep.conf
+    echo "AllowSuspendThenHibernate=no" >> /etc/systemd/sleep.conf
+    echo "SuspendState=mem" >> /etc/systemd/sleep.conf
     
     success "Modo SUSPENSÃO BÁSICA configurado!"
 }
@@ -340,46 +276,31 @@ configure_smart_mode() {
     }
     add_mkinitcpio_hook
     
-    # Configuração exata do logind.conf conforme solicitado
-    add_config "/etc/systemd/logind.conf" "" "# TAMPA - Comportamento principal"
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitch=suspend-then-hibernate" ""
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchExternalPower=suspend-then-hibernate" ""
-    add_config "/etc/systemd/logind.conf" "HandleLidSwitchDocked=ignore" ""
-    add_config "/etc/systemd/logind.conf" "" "# BOTÕES DE ENERGIA"
-    add_config "/etc/systemd/logind.conf" "HandlePowerKey=suspend-then-hibernate" ""
-    add_config "/etc/systemd/logind.conf" "HandleSuspendKey=suspend" ""
-    add_config "/etc/systemd/logind.conf" "HandleHibernateKey=hibernate" ""
-    add_config "/etc/systemd/logind.conf" "" "# TEMPOS para suspend-then-hibernate (2 horas = 7200 segundos)"
-    add_config "/etc/systemd/logind.conf" "HoldoffTimeoutSec=30s" ""
-    add_config "/etc/systemd/logind.conf" "IdleAction=suspend-then-hibernate" ""
-    add_config "/etc/systemd/logind.conf" "IdleActionSec=1800" ""
-    add_config "/etc/systemd/logind.conf" "" "# BATERIA CRÍTICA"
-    add_config "/etc/systemd/logind.conf" "HandleBatteryCriticalLevel=5%" ""
-    add_config "/etc/systemd/logind.conf" "HandleBatteryCriticalAction=hibernate" ""
-    add_config "/etc/systemd/logind.conf" "" "# CONFIGURAÇÕES GLOBAIS"
-    add_config "/etc/systemd/logind.conf" "NAutoVTs=6" ""
-    add_config "/etc/systemd/logind.conf" "ReserveVT=6" ""
-    add_config "/etc/systemd/logind.conf" "KillUserProcesses=no" ""
-    add_config "/etc/systemd/logind.conf" "KillOnlyUsers=" ""
-    add_config "/etc/systemd/logind.conf" "KillExcludeUsers=root" ""
-    add_config "/etc/systemd/logind.conf" "InhibitDelayMaxSec=5" ""
-    add_config "/etc/systemd/logind.conf" "UserStopDelaySec=10" ""
+    # Configurar logind.conf - APENAS ADICIONAR NO FINAL
+    echo -e "\n# TAMPA - Comportamento principal" >> /etc/systemd/logind.conf
+    echo "HandleLidSwitch=suspend-then-hibernate" >> /etc/systemd/logind.conf
+    echo "HandleLidSwitchExternalPower=suspend-then-hibernate" >> /etc/systemd/logind.conf
+    echo "HandleLidSwitchDocked=ignore" >> /etc/systemd/logind.conf
+    echo "# BOTÕES DE ENERGIA" >> /etc/systemd/logind.conf
+    echo "HandlePowerKey=suspend-then-hibernate" >> /etc/systemd/logind.conf
+    echo "HandleSuspendKey=suspend" >> /etc/systemd/logind.conf
+    echo "HandleHibernateKey=hibernate" >> /etc/systemd/logind.conf
+    echo "# TEMPOS para suspend-then-hibernate (2 horas = 7200 segundos)" >> /etc/systemd/logind.conf
+    echo "HoldoffTimeoutSec=30s" >> /etc/systemd/logind.conf
+    echo "IdleAction=suspend-then-hibernate" >> /etc/systemd/logind.conf
+    echo "IdleActionSec=1800" >> /etc/systemd/logind.conf
+    echo "# BATERIA CRÍTICA" >> /etc/systemd/logind.conf
+    echo "HandleBatteryCriticalLevel=5%" >> /etc/systemd/logind.conf
+    echo "HandleBatteryCriticalAction=hibernate" >> /etc/systemd/logind.conf
     
-    # Configuração exata do sleep.conf conforme solicitado
-    add_config "/etc/systemd/sleep.conf" "" "# Suspender ao fechar tampa (instantâneo)"
-    add_config "/etc/systemd/sleep.conf" "HandleLidSwitch=suspend" ""
-    add_config "/etc/systemd/sleep.conf" "HandleLidSwitchExternalPower=suspend" ""
-    add_config "/etc/systemd/sleep.conf" "HandleLidSwitchDocked=ignore" ""
-    add_config "/etc/systemd/sleep.conf" "" "# Hibernar após 2 horas de suspensão (segurança)"
-    add_config "/etc/systemd/sleep.conf" "HibernateDelaySec=7200" ""
-    add_config "/etc/systemd/sleep.conf" "" "# Modo de suspensão confiável (evita tela preta)"
-    add_config "/etc/systemd/sleep.conf" "AllowSuspend=yes" ""
-    add_config "/etc/systemd/sleep.conf" "AllowHibernation=yes" ""
-    add_config "/etc/systemd/sleep.conf" "AllowHybridSleep=yes" ""
-    add_config "/etc/systemd/sleep.conf" "SuspendMode=suspend" ""
-    add_config "/etc/systemd/sleep.conf" "SuspendState=mem" ""
-    add_config "/etc/systemd/sleep.conf" "HibernateMode=platform" ""
-    add_config "/etc/systemd/sleep.conf" "HibernateState=disk" ""
+    # Configurar sleep.conf - APENAS ADICIONAR NO FINAL
+    echo -e "\n# CONFIGURAÇÃO INTELIGENTE DE SUSPENSÃO" >> /etc/systemd/sleep.conf
+    echo "AllowSuspend=yes" >> /etc/systemd/sleep.conf
+    echo "AllowHibernation=yes" >> /etc/systemd/sleep.conf
+    echo "AllowHybridSleep=yes" >> /etc/systemd/sleep.conf
+    echo "AllowSuspendThenHibernate=yes" >> /etc/systemd/sleep.conf
+    echo "SuspendState=mem" >> /etc/systemd/sleep.conf
+    echo "HibernateDelaySec=7200" >> /etc/systemd/sleep.conf
     
     success "Modo SUSPENSÃO E HIBERNAÇÃO INTELIGENTE configurado!"
 }
@@ -402,84 +323,51 @@ check_current_config() {
     
     echo -e "\n${CYAN}=== CONFIGURAÇÃO ATUAL DETALHADA ===${NC}"
     
-    # Kernel parameters
-    if [[ -f /etc/kernel/cmdline ]]; then
+    [[ -f /etc/kernel/cmdline ]] && {
         echo -e "\n${BLUE}Kernel Parameters:${NC}"
         cat /etc/kernel/cmdline
         echo -e "\n${BLUE}Parâmetros de Energia:${NC}"
-        if kernel_param_exists "resume"; then
+        kernel_param_exists "resume" && {
             local resume_uuid=$(grep -o 'resume=UUID=[^ ]*' /etc/kernel/cmdline | cut -d= -f3)
             echo -e "  ✅ ${GREEN}resume: CONFIGURADO (UUID=$resume_uuid)$NC"
-        else
-            echo -e "  ❌ ${RED}resume: NÃO CONFIGURADO$NC"
-        fi
+        } || echo -e "  ❌ ${RED}resume: NÃO CONFIGURADO$NC"
         
-        if kernel_param_exists "zswap.enabled"; then
+        kernel_param_exists "zswap.enabled" && {
             local zswap_value=$(grep -o 'zswap.enabled=[^ ]*' /etc/kernel/cmdline | cut -d= -f2)
             echo -e "  ✅ ${GREEN}zswap.enabled: $zswap_value$NC"
-        else
-            echo -e "  ❌ ${RED}zswap.enabled: NÃO CONFIGURADO$NC"
-        fi
-    fi
+        } || echo -e "  ❌ ${RED}zswap.enabled: NÃO CONFIGURADO$NC"
+    }
     
-    # Mkinitcpio
     echo -e "\n${BLUE}Mkinitcpio Hooks:${NC}"
     local hooks_line=$(grep "^HOOKS=" /etc/mkinitcpio.conf 2>/dev/null || echo "Não encontrado")
     echo "$hooks_line"
-    if hook_exists; then
-        echo -e "  ✅ ${GREEN}resume hook: PRESENTE$NC"
-    else
-        echo -e "  ❌ ${RED}resume hook: AUSENTE$NC"
-    fi
+    hook_exists && echo -e "  ✅ ${GREEN}resume hook: PRESENTE$NC" || echo -e "  ❌ ${RED}resume hook: AUSENTE$NC"
     
-    # Systemd logind
     echo -e "\n${BLUE}Systemd Logind:${NC}"
-    if [[ -f /etc/systemd/logind.conf ]]; then
-        cat /etc/systemd/logind.conf | grep -v "^#" | grep -v "^$" | while read -r line; do
-            echo "  📝 $line"
-        done || echo "  ℹ️  Nenhuma configuração específica"
-    else
-        echo "  ❌ Arquivo não encontrado"
-    fi
+    [[ -f /etc/systemd/logind.conf ]] && {
+        tail -20 /etc/systemd/logind.conf | while read -r line; do
+            [[ -n "$line" ]] && echo "  📝 $line"
+        done
+    } || echo "  ❌ Arquivo não encontrado"
     
-    # Systemd sleep
     echo -e "\n${BLUE}Systemd Sleep:${NC}"
-    if [[ -f /etc/systemd/sleep.conf ]]; then
-        cat /etc/systemd/sleep.conf | grep -v "^#" | grep -v "^$" | while read -r line; do
-            echo "  📝 $line"
-        done || echo "  ℹ️  Nenhuma configuração específica"
-    else
-        echo "  ❌ Arquivo não encontrado"
-    fi
-    
-    # GDM
-    echo -e "\n${BLUE}GDM Config:${NC}"
-    if [[ -f /etc/gdm/custom.conf ]]; then
-        grep -E "^(WaylandEnable|\[daemon\])" /etc/gdm/custom.conf 2>/dev/null | while read -r line; do
-            echo "  📝 $line"
-        done || echo "  ℹ️  Configuração padrão"
-    else
-        echo "  ❌ Arquivo não encontrado"
-    fi
+    [[ -f /etc/systemd/sleep.conf ]] && {
+        tail -20 /etc/systemd/sleep.conf | while read -r line; do
+            [[ -n "$line" ]] && echo "  📝 $line"
+        done
+    } || echo "  ❌ Arquivo não encontrado"
 }
 
 apply_configurations() {
     step "Aplicando configurações..."
     
-    # Regenerar initramfs
-    if [[ -f /etc/mkinitcpio.conf ]]; then
-        if mkinitcpio -P; then
-            success "Initramfs regenerado com sucesso!"
-        else
-            error "Falha ao regenerar initramfs!"
-            return 1
-        fi
-    fi
+    [[ -f /etc/mkinitcpio.conf ]] && {
+        mkinitcpio -P && success "Initramfs regenerado!" || error "Falha ao regenerar initramfs!"
+    }
     
     echo -e "\n${YELLOW}=== ⚠️  REINICIE O SISTEMA ===${NC}"
     echo "Comando: ${GREEN}reboot${NC}"
     echo "Após reiniciar, teste com: ${CYAN}systemctl suspend${NC}"
-    echo "Monitore os logs: ${CYAN}journalctl -f -u systemd-logind${NC}"
 }
 
 # FUNÇÃO PRINCIPAL
