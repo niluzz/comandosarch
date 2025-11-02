@@ -29,7 +29,8 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Drive NVIDIA..."
 sudo pacman -S --needed --noconfirm \
-  nvidia-utils nvidia-settings lib32-nvidia-utils
+  nvidia-utils nvidia-settings lib32-nvidia-utils \
+  opencl-nvidia
 
 echo ">>> Jellyfin..."
 sudo pacman -S --needed --noconfirm \
