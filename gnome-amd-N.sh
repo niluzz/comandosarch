@@ -35,7 +35,7 @@ sudo pacman -S --needed --noconfirm \
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
   qbittorrent newsflash amf-headers dialect \
-  gufw thunderbird-i18n-br
+  gufw thunderbird-i18n-pt-br rocm-opencl-runtime
 
 echo "Ferramentas de Backup..."
 sudo pacman -S --needed --noconfirm \
