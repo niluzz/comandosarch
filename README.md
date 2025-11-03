@@ -1,40 +1,38 @@
-# Arch Scripts
+# ⚙️ Comandos Arch  
 
-Scripts de configuração e automatização para Arch Linux / setups personalizados.
-
----
-
-## 📁 Estrutura do Repositório
-
-| Arquivo / Pasta | Descrição |
-|------------------|-----------|
-| `amd-gnome-N.sh` | Script para configurar sistema AMD com GNOME |
-| `nvidia-gnome-D.sh` | Script para configurar sistema NVIDIA com GNOME |
-| `nvidia-kde.sh` | Script para configurar sistema NVIDIA com KDE |
-| `hibernate-arch-gnome.sh` | Hibernação customizada para Arch + GNOME |
-| `configurar_samba.sh` | Script para configurar compartilhamento Samba |
-| `zram-install.sh` | Script para configurar zram |
-| `zsh-install.sh` | Instalação e configuração inicial do Zsh |
-| `README.md` | O arquivo que você está visualizando agora |
+Scripts de configuração e automação para Arch Linux — criados para facilitar setups personalizados, otimizados e modulares.  
 
 ---
 
-## 🛠 Funcionalidades & Objetivos
+## 📦 Sobre o Projeto  
 
-Este repositório visa centralizar scripts úteis para acelerar e padronizar a configuração do Arch Linux com diferentes ambientes (GNOME, KDE), drivers gráficos (AMD, NVIDIA), gerenciamento de energia e utilitários úteis (zram, Samba etc).
+Este repositório reúne uma coleção de **scripts Bash** voltados à configuração completa do **Arch Linux**, incluindo ajustes de desempenho, otimização de energia, drivers gráficos, ambiente de desktop e utilitários essenciais.  
 
-As metas incluem:
+A ideia é **automatizar tarefas repetitivas**, manter tudo versionado e simplificar reinstalações ou novos ambientes.  
 
-- Automatização para evitar repetir configurações manuais.  
-- Modularidade: você pode escolher rodar apenas o que precisa (ex: somente o script do zsh).  
-- Manutenibilidade: ter um local para evoluir estes scripts conforme seus usos.
+> 💡 Cada script é independente — você pode rodar apenas o que precisar.
 
 ---
 
-## 🚀 Como usar
+## 🧩 Estrutura do Repositório  
 
-1. Clone este repositório:
+| Arquivo / Script | Função Principal |
+|------------------|------------------|
+| `gnome-amd-N.sh` | Configuração completa do GNOME para sistemas com GPU AMD |
+| `gnome-nvidia-D.sh` | Configuração otimizada do GNOME com drivers NVIDIA |
+| `kde-nvidia.sh` | Setup completo do KDE Plasma com suporte NVIDIA |
+| `hibernate-configure.sh` | Script para ajuste fino da hibernação no Arch |
+| `tlp-configure.sh` | Configuração avançada de economia de energia (TLP) |
+| `configurar_samba.sh` | Configuração automatizada de compartilhamento via Samba |
+| `zram-install.sh` | Instalação e ajuste de zRAM para melhor uso de memória |
+| `zsh-install.sh` | Instalação e personalização inicial do Zsh |
+| `README.md` | Este arquivo de documentação |
 
+---
+
+## 🚀 Como Usar  
+
+1. Clone o repositório:
    ```bash
    git clone https://github.com/niluzz/comandosarch.git
    cd comandosarch
