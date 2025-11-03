@@ -287,7 +287,7 @@ configure_smart_mode() {
     echo "HandleHibernateKey=hibernate" >> /etc/systemd/logind.conf
     echo "# TEMPOS para suspend-then-hibernate (2 horas = 7200 segundos)" >> /etc/systemd/logind.conf
     echo "HoldoffTimeoutSec=30s" >> /etc/systemd/logind.conf
-    echo "IdleAction=suspend-then-hibernate" >> /etc/systemd/logind.conf
+    echo "IdleAction=hibernate" >> /etc/systemd/logind.conf
     echo "IdleActionSec=1800" >> /etc/systemd/logind.conf
     echo "# BATERIA CRÍTICA" >> /etc/systemd/logind.conf
     echo "HandleBatteryCriticalLevel=5%" >> /etc/systemd/logind.conf
