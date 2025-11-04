@@ -290,8 +290,8 @@ configure_smart_mode() {
     echo "IdleAction=hibernate" >> /etc/systemd/logind.conf
     echo "IdleActionSec=1800" >> /etc/systemd/logind.conf
     echo "# BATERIA CRÍTICA" >> /etc/systemd/logind.conf
-    echo "HandleBatteryCriticalLevel=5%" >> /etc/systemd/logind.conf
-    echo "HandleBatteryCriticalAction=hibernate" >> /etc/systemd/logind.conf
+    echo "#HandleBatteryCriticalLevel=5%" >> /etc/systemd/logind.conf
+    echo "#HandleBatteryCriticalAction=hibernate" >> /etc/systemd/logind.conf
     
     # Configurar sleep.conf - APENAS ADICIONAR NO FINAL
     echo -e "\n# CONFIGURAÇÃO INTELIGENTE DE SUSPENSÃO" >> /etc/systemd/sleep.conf
