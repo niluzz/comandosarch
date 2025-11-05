@@ -245,24 +245,34 @@ configure_suspend_only() {
     [[ -n "$SWAP_UUID" ]] && add_kernel_param "resume" "UUID=$SWAP_UUID"
     add_mkinitcpio_hook
     
-    # Configurar logind.conf - APENAS ADICIONAR NO FINAL
-    echo -e "\n# === CONFIGURAÇÃO DE ENERGIA - SUSPENSÃO BÁSICA ===" >> /etc/systemd/logind.conf
-    echo "HandlePowerKey=suspend" >> /etc/systemd/logind.conf
-    echo "HandleSuspendKey=suspend" >> /etc/systemd/logind.conf
-    echo "HandleHibernateKey=suspend" >> /etc/systemd/logind.conf
-    echo "HandleLidSwitch=suspend" >> /etc/systemd/logind.conf
-    echo "HandleLidSwitchExternalPower=suspend" >> /etc/systemd/logind.conf
-    echo "IdleAction=suspend" >> /etc/systemd/logind.conf
-    echo "IdleActionSec=30m" >> /etc/systemd/logind.conf
-    
-    # Configurar sleep.conf - APENAS ADICIONAR NO FINAL
-    echo -e "\n# === CONFIGURAÇÃO DE SUSPENSÃO BÁSICA ===" >> /etc/systemd/sleep.conf
-    echo "AllowSuspend=yes" >> /etc/systemd/sleep.conf
-    echo "AllowHibernation=no" >> /etc/systemd/sleep.conf
-    echo "AllowHybridSleep=no" >> /etc/systemd/sleep.conf
-    echo "AllowSuspendThenHibernate=no" >> /etc/systemd/sleep.conf
-    echo "SuspendState=mem" >> /etc/systemd/sleep.conf
-    
+    # Configurar logind.conf
+    cat >> /etc/systemd/logind.conf << 'EOF'
+
+# =============================================
+#        CONFIGURAÇÃO SUSPENSÃO BÁSICA
+# =============================================
+HandlePowerKey=suspend
+HandleSuspendKey=suspend
+HandleHibernateKey=suspend
+HandleLidSwitch=suspend
+HandleLidSwitchExternalPower=suspend
+IdleAction=suspend
+IdleActionSec=30m
+EOF
+
+    # Configurar sleep.conf
+    cat >> /etc/systemd/sleep.conf << 'EOF'
+
+# =============================================
+#        CONFIGURAÇÃO SUSPENSÃO BÁSICA
+# =============================================
+AllowSuspend=yes
+AllowHibernation=no
+AllowHybridSleep=no
+AllowSuspendThenHibernate=no
+SuspendState=mem
+EOF
+
     success "Modo SUSPENSÃO BÁSICA configurado!"
 }
 
@@ -276,32 +286,77 @@ configure_smart_mode() {
     }
     add_mkinitcpio_hook
     
-    # Configurar logind.conf - APENAS ADICIONAR NO FINAL
-    echo -e "\n# TAMPA - Comportamento principal" >> /etc/systemd/logind.conf
-    echo "HandleLidSwitch=hibernate" >> /etc/systemd/logind.conf
-    echo "HandleLidSwitchExternalPower=suspend-then-hibernate" >> /etc/systemd/logind.conf
-    echo "HandleLidSwitchDocked=ignore" >> /etc/systemd/logind.conf
-    echo "# BOTÕES DE ENERGIA" >> /etc/systemd/logind.conf
-    echo "HandlePowerKey=suspend-then-hibernate" >> /etc/systemd/logind.conf
-    echo "HandleSuspendKey=suspend" >> /etc/systemd/logind.conf
-    echo "HandleHibernateKey=hibernate" >> /etc/systemd/logind.conf
-    echo "# TEMPOS para suspend-then-hibernate (2 horas = 7200 segundos)" >> /etc/systemd/logind.conf
-    echo "HoldoffTimeoutSec=30s" >> /etc/systemd/logind.conf
-    echo "IdleAction=hibernate" >> /etc/systemd/logind.conf
-    echo "IdleActionSec=1800" >> /etc/systemd/logind.conf
-    echo "# BATERIA CRÍTICA" >> /etc/systemd/logind.conf
-    echo "#HandleBatteryCriticalLevel=5%" >> /etc/systemd/logind.conf
-    echo "#HandleBatteryCriticalAction=hibernate" >> /etc/systemd/logind.conf
-    
-    # Configurar sleep.conf - APENAS ADICIONAR NO FINAL
-    echo -e "\n# CONFIGURAÇÃO INTELIGENTE DE SUSPENSÃO" >> /etc/systemd/sleep.conf
-    echo "AllowSuspend=yes" >> /etc/systemd/sleep.conf
-    echo "AllowHibernation=yes" >> /etc/systemd/sleep.conf
-    echo "AllowHybridSleep=yes" >> /etc/systemd/sleep.conf
-    echo "AllowSuspendThenHibernate=yes" >> /etc/systemd/sleep.conf
-    echo "SuspendState=freeze" >> /etc/systemd/sleep.conf
-    echo "HibernateDelaySec=7200" >> /etc/systemd/sleep.conf
-    
+    # Configurar logind.conf - TUDO DE UMA VEZ
+    cat >> /etc/systemd/logind.conf << 'EOF'
+
+# =============================================
+#           COMPORTAMENTO NA BATERIA
+# =============================================
+
+# TAMPA - BATERIA
+HandleLidSwitch=hibernate
+
+# BOTÕES - BATERIA  
+HandlePowerKey=suspend-then-hibernate
+HandleSuspendKey=suspend
+HandleHibernateKey=hibernate
+
+# TEMPOS - BATERIA
+HoldoffTimeoutSec=30s
+IdleAction=hibernate
+IdleActionSec=3600s
+
+# BATERIA CRÍTICA (opcional - descomente se quiser)
+#HandleBatteryCriticalLevel=5%
+#HandleBatteryCriticalAction=hibernate
+
+
+# =============================================
+#         COMPORTAMENTO NA TOMADA
+# =============================================
+
+# TAMPA - TOMADA
+HandleLidSwitchExternalPower=suspend
+
+# BOTÕES - TOMADA
+# (Use as mesmas configurações ou adicione específicas)
+# HandlePowerKeyExternalPower=suspend
+# HandleSuspendKeyExternalPower=suspend
+
+
+# =============================================
+#          CONFIGURAÇÕES GLOBAIS
+# =============================================
+
+# DOCK/ESTAÇÃO DE ACOPLAMENTO
+HandleLidSwitchDocked=ignore
+
+# CONFIGURAÇÕES DO SISTEMA
+NAutoVTs=6
+ReserveVT=6
+KillUserProcesses=no
+KillOnlyUsers=
+KillExcludeUsers=root
+InhibitDelayMaxSec=5
+UserStopDelaySec=10
+EOF
+
+    # Configurar sleep.conf - TUDO DE UMA VEZ
+    cat >> /etc/systemd/sleep.conf << 'EOF'
+
+# =============================================
+#     CONFIGURAÇÃO INTELIGENTE DE SUSPENSÃO
+# =============================================
+AllowSuspend=yes
+AllowHibernation=yes
+AllowHybridSleep=yes
+AllowSuspendThenHibernate=yes
+
+# Hibernar após 1 hora em suspend
+HibernateDelaySec=3600s
+SuspendState=freeze
+EOF
+
     success "Modo SUSPENSÃO E HIBERNAÇÃO INTELIGENTE configurado!"
 }
 
