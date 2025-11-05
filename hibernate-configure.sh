@@ -278,7 +278,7 @@ configure_smart_mode() {
     
     # Configurar logind.conf - APENAS ADICIONAR NO FINAL
     echo -e "\n# TAMPA - Comportamento principal" >> /etc/systemd/logind.conf
-    echo "HandleLidSwitch=suspend-then-hibernate" >> /etc/systemd/logind.conf
+    echo "HandleLidSwitch=hibernate" >> /etc/systemd/logind.conf
     echo "HandleLidSwitchExternalPower=suspend-then-hibernate" >> /etc/systemd/logind.conf
     echo "HandleLidSwitchDocked=ignore" >> /etc/systemd/logind.conf
     echo "# BOTÕES DE ENERGIA" >> /etc/systemd/logind.conf
@@ -299,7 +299,7 @@ configure_smart_mode() {
     echo "AllowHibernation=yes" >> /etc/systemd/sleep.conf
     echo "AllowHybridSleep=yes" >> /etc/systemd/sleep.conf
     echo "AllowSuspendThenHibernate=yes" >> /etc/systemd/sleep.conf
-    echo "SuspendState=mem" >> /etc/systemd/sleep.conf
+    echo "SuspendState=freeze" >> /etc/systemd/sleep.conf
     echo "HibernateDelaySec=7200" >> /etc/systemd/sleep.conf
     
     success "Modo SUSPENSÃO E HIBERNAÇÃO INTELIGENTE configurado!"
