@@ -1,0 +1,67 @@
+logind-suspensão
+[Login]
+# ==================================================
+#        COMPORTAMENTO NA BATERIA
+# ==================================================
+
+# Fechar a tampa (bateria):
+# Suspende e depois hiberna (controlado pelo sleep.conf)
+HandleLidSwitch=suspend
+
+# Botão de energia (bateria)
+HandlePowerKey=suspend
+
+# Teclas dedicadas
+HandleSuspendKey=suspend
+HandleHibernateKey=ignore
+
+# ==================================================
+#        COMPORTAMENTO NA TOMADA (AC)
+# ==================================================
+
+# Fechar a tampa na tomada:
+# Apenas suspende (mais estável)
+HandleLidSwitchExternalPower=suspend
+
+# ==================================================
+#        CONFIGURAÇÕES GERAIS
+# ==================================================
+
+# Permite ação mesmo com inibidores do GNOME
+LidSwitchIgnoreInhibited=yes
+
+# ==================================================
+# BATERIA CRÍTICA (opcional - descomente se quiser)
+# ==================================================
+
+HandleBatteryCriticalLevel=15%
+HandleBatteryCriticalAction=poweroff
+
+# ==================================================
+#                    INATIVIDADE
+# ==================================================
+
+HoldoffTimeoutSec=30s
+#IdleAction=suspend
+#IdleActionSec=900S
+
+sleep-suspensão
+[Sleep]
+# ==================================================
+#        PERMISSÕES
+# ==================================================
+
+AllowSuspend=yes
+AllowHibernation=no
+AllowHybridSleep=no
+AllowSuspendThenHibernate=no
+
+# ==================================================
+#        COMPORTAMENTO
+# ==================================================
+
+# Suspensão real (necessária para GPU funcionar bem)
+SuspendState=mem
+
+# Tempo em suspensão antes de hibernar (10 minutos)
+#HibernateDelaySec=40s
