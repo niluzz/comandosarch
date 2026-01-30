@@ -10,8 +10,8 @@ echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
   git zsh base-devel pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd power-profiles-daemon mesa-utils \
-  ibus systemd-ukify
+  fwupd mesa-utils ibus systemd-ukify
+
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
@@ -35,7 +35,7 @@ sudo pacman -S --needed --noconfirm \
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
   qbittorrent newsflash amf-headers dialect \
-  gufw thunderbird-i18n-pt-br rocm-opencl-runtime
+  gufw thunderbird-i18n-pt-br
 
 echo "Ferramentas de Backup..."
 sudo pacman -S --needed --noconfirm \
@@ -55,8 +55,8 @@ fi
 echo ">>> Instalando pacotes do AUR com paru..."
 paru -S --needed --noconfirm \
   google-chrome onlyoffice-bin extension-manager \
-  protonplus mangojuice phinger-cursors \
-  ttf-ms-fonts
+  mangojuice phinger-cursors ttf-ms-fonts auto-cpufreq 
+  
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
