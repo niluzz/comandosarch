@@ -12,9 +12,10 @@ ZRAM_CONFIG="/etc/systemd/zram-generator.conf"
 
 # Criando o arquivo sysctl.d com os parâmetros
 cat <<EOF > "$SYSCTL_CONFIG"
-vm.swappiness = 180
+vm.swappiness = 60
+vm.vfs_cache_pressure = 50
+vm.watermark_scale_factor = 10
 vm.watermark_boost_factor = 0
-vm.watermark_scale_factor = 125
 vm.page-cluster = 0
 EOF
 
