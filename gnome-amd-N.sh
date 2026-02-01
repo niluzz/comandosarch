@@ -63,7 +63,7 @@ CMDLINE_FILE="/etc/kernel/cmdline"
 if [ ! -f "$CMDLINE_FILE" ]; then
   echo "Arquivo $CMDLINE_FILE não encontrado. Criando..."
   sudo mkdir -p /etc/kernel
-  echo "quiet splash iommu=pt amdgpu.dcdebugmask=0x10 amdgpu.gpu_recovery=1 " | sudo tee "$CMDLINE_FILE"
+  echo "quiet splash iommu=pt amdgpu.dcdebugmask=0x10 amdgpu.gpu_recovery=1" | sudo tee "$CMDLINE_FILE"
 else
   for param in quiet splash iommu=pt amdgpu.dcdebugmask=0x10 amdgpu.gpu_recovery=1; do
     if ! grep -qw "$param" "$CMDLINE_FILE"; then
