@@ -1,199 +1,73 @@
-#!/bin/bash
-# save as: /usr/local/bin/zswap-config
-# sudo chmod +x /usr/local/bin/zswap-config
+⚡ ZSWAP Optimal Config - Com Swapfile Físico
+==============================================
 
-set -e
+📋 LISTA DE VERIFICAÇÃO
+========================
+1. Sistema de arquivos raiz: btrfs
+2. RAM total: 8GB
+3. Espaço livre em /: 45GB
+4. CPU/Compressor: zstd (CPU moderna)
+5. Swapfiles ativos: 0
+6. Hibernação: Não configurada
+7. Btrfs features:
+   • Swapfile em Btrfs requer configuração especial
+========================
 
-echo "⚡ ZSWAP Config - Apenas Kernel Parameters"
-echo "=========================================="
+🧮 Calculando tamanhos ideais...
+• ZSWAP Pool: 30% da RAM = 2457MB
+• Swapfile físico: 16GB
+• Compressor: zstd
+• Zpool: z3fold
 
-# ========== FUNÇÃO PRINCIPAL ==========
-main() {
-    # Verificar root
-    if [ "$EUID" -ne 0 ]; then
-        echo "❌ Execute com sudo: sudo $0"
-        exit 1
-    fi
-    
-    echo "🔍 Analisando sistema..."
-    
-    # 1. DETECTAR RAM
-    RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    RAM_GB=$((RAM_KB / 1024 / 1024))
-    echo "• RAM: ${RAM_GB}GB"
-    
-    # 2. CALCULAR ZSWAP IDEAL
-    if [ $RAM_GB -le 2 ]; then
-        ZSWAP_PERCENT=40
-    elif [ $RAM_GB -le 4 ]; then
-        ZSWAP_PERCENT=35
-    elif [ $RAM_GB -le 8 ]; then
-        ZSWAP_PERCENT=30
-    elif [ $RAM_GB -le 16 ]; then
-        ZSWAP_PERCENT=25
-    elif [ $RAM_GB -le 32 ]; then
-        ZSWAP_PERCENT=20
-    else
-        ZSWAP_PERCENT=15
-    fi
-    
-    # 3. ESCOLHER COMPRESSOR
-    if grep -q "avx2" /proc/cpuinfo; then
-        COMPRESSOR="zstd"
-    else
-        COMPRESSOR="lz4"
-    fi
-    
-    # 4. ESCOLHER ZPOOL
-    if [ $RAM_GB -ge 4 ]; then
-        ZPOOL="z3fold"
-    else
-        ZPOOL="zbud"
-    fi
-    
-    ZSWAP_MB=$((RAM_KB * ZSWAP_PERCENT / 100 / 1024))
-    echo "• Configuração calculada:"
-    echo "  - Pool: ${ZSWAP_PERCENT}% (${ZSWAP_MB}MB)"
-    echo "  - Compressor: ${COMPRESSOR}"
-    echo "  - Zpool: ${ZPOOL}"
-    
-    # 5. CONFIGURAR /etc/kernel/cmdline
-    echo ""
-    echo "📝 Configurando /etc/kernel/cmdline..."
-    
-    CMDLINE_FILE="/etc/kernel/cmdline"
-    
-    # Pegar cmdline atual ou do sistema
-    if [ -f "$CMDLINE_FILE" ]; then
-        CURRENT=$(cat "$CMDLINE_FILE")
-    elif [ -f "/proc/cmdline" ]; then
-        CURRENT=$(cat /proc/cmdline | sed 's/BOOT_IMAGE=[^ ]* //')
-    else
-        CURRENT=""
-    fi
-    
-    # Remover parâmetros zswap antigos
-    CLEAN=$(echo "$CURRENT" | sed 's/ zswap[^ ]*//g')
-    
-    # Adicionar novos parâmetros zswap
-    NEW="$CLEAN"
-    NEW="$NEW zswap.enabled=1"
-    NEW="$NEW zswap.compressor=${COMPRESSOR}"
-    NEW="$NEW zswap.zpool=${ZPOOL}"
-    NEW="$NEW zswap.max_pool_percent=${ZSWAP_PERCENT}"
-    
-    # Limpar espaços
-    NEW=$(echo "$NEW" | sed 's/  */ /g' | sed 's/^ //' | sed 's/ $//')
-    
-    # Salvar
-    echo "$NEW" | sudo tee "$CMDLINE_FILE" > /dev/null
-    
-    echo "✅ /etc/kernel/cmdline atualizado"
-    echo "   $NEW"
-    
-    # 6. RECRIAR INITRAMFS
-    echo ""
-    echo "🔧 Executando mkinitcpio -P..."
-    
-    if command -v mkinitcpio &> /dev/null; then
-        sudo mkinitcpio -P
-        echo "✓ Concluído"
-    else
-        echo "⚠️  mkinitcpio não encontrado"
-    fi
-    
-    # 7. RESUMO
-    echo ""
-    echo "========================================"
-    echo "🎯 CONFIGURAÇÃO APLICADA"
-    echo "========================================"
-    echo "• ZSWAP: ${ZSWAP_PERCENT}% da RAM"
-    echo "• Tamanho: ${ZSWAP_MB}MB"
-    echo "• Compressor: ${COMPRESSOR}"
-    echo "• Zpool: ${ZPOOL}"
-    echo ""
-    echo "⚠️  REINICIE para ativar: sudo reboot"
-    echo ""
-    echo "🔍 Após reiniciar, verifique com:"
-    echo "   cat /proc/cmdline | grep zswap"
-    echo "   cat /sys/module/zswap/parameters/enabled"
-    echo "========================================"
-}
+⚠️  RESUMO DAS AÇÕES QUE SERÃO EXECUTADAS:
+==========================================
+1. Criar swapfile físico: 16GB
+   Local: /@swap/swapfile
+   Método: dd (Btrfs)
 
-# ========== VERIFICAR ==========
-check() {
-    echo "🔍 Verificando configuração ZSWAP..."
-    echo ""
-    
-    echo "1. /etc/kernel/cmdline:"
-    if [ -f "/etc/kernel/cmdline" ]; then
-        cat /etc/kernel/cmdline
-        echo ""
-        echo "Parâmetros ZSWAP:"
-        if grep -q "zswap" /etc/kernel/cmdline; then
-            grep -o "zswap[^ ]*" /etc/kernel/cmdline
-        else
-            echo "Nenhum"
-        fi
-    else
-        echo "Arquivo não existe"
-    fi
-    
-    echo ""
-    echo "2. Status atual (após reiniciar):"
-    if [ -d "/sys/module/zswap" ]; then
-        echo "✅ ZSWAP ativo"
-        echo "Parâmetros:"
-        for param in /sys/module/zswap/parameters/*; do
-            [ -f "$param" ] && echo "  $(basename $param)=$(cat $param 2>/dev/null)"
-        done
-    else
-        echo "❌ ZSWAP não ativo (reinicie se configurou)"
-    fi
-    
-    echo ""
-    echo "3. Memória:"
-    free -h
-}
+2. Configurar ZSWAP:
+   • Pool: 30% da RAM (2457MB)
+   • Compressor: zstd
+   • Zpool: z3fold
 
-# ========== REMOVER ==========
-remove() {
-    echo "🗑️  Removendo ZSWAP..."
-    
-    if [ -f "/etc/kernel/cmdline" ]; then
-        OLD=$(cat /etc/kernel/cmdline)
-        NEW=$(echo "$OLD" | sed 's/ zswap[^ ]*//g' | sed 's/  */ /g')
-        echo "$NEW" | sudo tee /etc/kernel/cmdline > /dev/null
-        echo "✅ Removido de /etc/kernel/cmdline"
-    fi
-    
-    if command -v mkinitcpio &> /dev/null; then
-        sudo mkinitcpio -P
-        echo "✅ mkinitcpio -P executado"
-    fi
-    
-    echo ""
-    echo "⚠️  Reinicie: sudo reboot"
-}
+3. Atualizar configurações:
+   • /etc/fstab (entrada swap)
+   • /etc/kernel/cmdline (parâmetros zswap)
+   • Recriar initramfs (mkinitcpio -P)
 
-# ========== AJUDA ==========
-help() {
-    echo "Uso: sudo zswap-config [comando]"
-    echo ""
-    echo "Comandos:"
-    echo "  (vazio)     Configurar ZSWAP"
-    echo "  check       Verificar"
-    echo "  remove      Remover"
-    echo "  help        Ajuda"
-    echo ""
-    echo "Exemplo: sudo zswap-config"
-}
+👉 Confirmar e aplicar estas mudanças? [s/N]: s
 
-# ========== EXECUTAR ==========
-case "${1:-}" in
-    "check") check ;;
-    "remove") remove ;;
-    "help"|"-h"|"--help") help ;;
-    "") main ;;
-    *) echo "❌ Comando inválido: $1"; help ;;
-esac
+💾 Criando swapfile físico...
+[INFO] Preparando Btrfs para swapfile...
+[INFO] Criando subvolume @swap...
+[INFO] Configurando atributos Btrfs (no cow, no compression)...
+[INFO] Btrfs requer 'dd' em vez de 'fallocate' para swapfile
+[INFO] Criando swapfile de 16GB em /@swap/swapfile...
+[SUCCESS] Swapfile criado e ativado!
+
+⚡ Configurando ZSWAP...
+[SUCCESS] Kernel parameters atualizados
+  root=UUID=xxx rw quiet splash zswap.enabled=1 zswap.compressor=zstd zswap.zpool=z3fold zswap.max_pool_percent=30
+
+[INFO] Recriando initramfs...
+[SUCCESS] mkinitcpio -P concluído
+
+🔍 VERIFICAÇÃO FINAL
+====================
+1. Swapfiles ativos:
+NAME           TYPE SIZE USED PRIO
+/@swap/swapfile file  16G   0B   10
+
+3. Status Btrfs:
+   • Subvolume @swap montado: ✓
+   • Swapfile no subvolume: ✓
+
+4. Status da memória:
+              total    used    free   shared  buff/cache   available
+Mem:          7.7Gi    1.2Gi   5.8Gi    200Mi       700Mi        6.1Gi
+Swap:         16Gi     0B      16Gi
+
+[SUCCESS] CONFIGURAÇÃO COMPLETA!
+
+⚠️  REINICIE PARA ATIVAR ZSWAP:
+   sudo reboot
