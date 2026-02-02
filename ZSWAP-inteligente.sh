@@ -1,11 +1,11 @@
 #!/bin/bash
-# save as: /usr/local/bin/zswap-auto-config
-# sudo chmod +x /usr/local/bin/zswap-auto-config
+# save as: /usr/local/bin/zswap-config
+# sudo chmod +x /usr/local/bin/zswap-config
 
 set -e
 
-echo "⚡ ZSWAP Auto Config"
-echo "==================="
+echo "⚡ ZSWAP Config - Apenas Kernel Parameters"
+echo "=========================================="
 
 # ========== FUNÇÃO PRINCIPAL ==========
 main() {
@@ -20,309 +20,180 @@ main() {
     # 1. DETECTAR RAM
     RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
     RAM_GB=$((RAM_KB / 1024 / 1024))
-    echo "• RAM total: ${RAM_GB}GB"
+    echo "• RAM: ${RAM_GB}GB"
     
-    # 2. DETECTAR CPU PARA COMPRESSOR IDEAL
-    if grep -q "avx2" /proc/cpuinfo; then
-        COMPRESSOR="zstd"
-        echo "• CPU: Moderna (AVX2) → Compressor: zstd"
-    elif grep -q "sse4" /proc/cpuinfo; then
-        COMPRESSOR="lz4"
-        echo "• CPU: Intermediária (SSE4) → Compressor: lz4"
-    else
-        COMPRESSOR="lzo-rle"
-        echo "• CPU: Básica → Compressor: lzo-rle"
-    fi
-    
-    # 3. CALCULAR ZSWAP IDEAL BASEADO NA RAM
-    echo "• Calculando tamanho ideal do ZSWAP..."
-    
+    # 2. CALCULAR ZSWAP IDEAL
     if [ $RAM_GB -le 2 ]; then
         ZSWAP_PERCENT=40
-        ZPOOL="zbud"
-        echo "  → RAM baixa (≤2GB): ${ZSWAP_PERCENT}% pool, zpool=zbud"
-        
     elif [ $RAM_GB -le 4 ]; then
         ZSWAP_PERCENT=35
-        ZPOOL="zbud"
-        echo "  → RAM moderada (4GB): ${ZSWAP_PERCENT}% pool, zpool=zbud"
-        
     elif [ $RAM_GB -le 8 ]; then
         ZSWAP_PERCENT=30
-        ZPOOL="z3fold"
-        echo "  → RAM boa (8GB): ${ZSWAP_PERCENT}% pool, zpool=z3fold"
-        
     elif [ $RAM_GB -le 16 ]; then
         ZSWAP_PERCENT=25
-        ZPOOL="z3fold"
-        echo "  → RAM alta (16GB): ${ZSWAP_PERCENT}% pool, zpool=z3fold"
-        
     elif [ $RAM_GB -le 32 ]; then
         ZSWAP_PERCENT=20
-        ZPOOL="z3fold"
-        echo "  → RAM muito alta (32GB): ${ZSWAP_PERCENT}% pool, zpool=z3fold"
-        
     else
         ZSWAP_PERCENT=15
+    fi
+    
+    # 3. ESCOLHER COMPRESSOR
+    if grep -q "avx2" /proc/cpuinfo; then
+        COMPRESSOR="zstd"
+    else
+        COMPRESSOR="lz4"
+    fi
+    
+    # 4. ESCOLHER ZPOOL
+    if [ $RAM_GB -ge 4 ]; then
         ZPOOL="z3fold"
-        echo "  → RAM workstation (>32GB): ${ZSWAP_PERCENT}% pool, zpool=z3fold"
+    else
+        ZPOOL="zbud"
     fi
     
     ZSWAP_MB=$((RAM_KB * ZSWAP_PERCENT / 100 / 1024))
-    echo "• Pool ZSWAP: ${ZSWAP_PERCENT}% = ${ZSWAP_MB}MB"
+    echo "• Configuração calculada:"
+    echo "  - Pool: ${ZSWAP_PERCENT}% (${ZSWAP_MB}MB)"
+    echo "  - Compressor: ${COMPRESSOR}"
+    echo "  - Zpool: ${ZPOOL}"
     
-    # 4. CONFIGURAR /etc/kernel/cmdline
+    # 5. CONFIGURAR /etc/kernel/cmdline
     echo ""
-    echo "⚙️  Configurando kernel parameters..."
+    echo "📝 Configurando /etc/kernel/cmdline..."
     
     CMDLINE_FILE="/etc/kernel/cmdline"
     
-    # Ler cmdline atual ou criar básico
-    if [ ! -f "$CMDLINE_FILE" ]; then
-        echo "• Criando novo /etc/kernel/cmdline"
-        # Pegar root atual do sistema
-        ROOT_UUID=$(findmnt -n -o UUID /)
-        if [ -n "$ROOT_UUID" ]; then
-            BASE_CMDLINE="root=UUID=${ROOT_UUID} rw"
-        else
-            BASE_CMDLINE=""
-        fi
+    # Pegar cmdline atual ou do sistema
+    if [ -f "$CMDLINE_FILE" ]; then
+        CURRENT=$(cat "$CMDLINE_FILE")
+    elif [ -f "/proc/cmdline" ]; then
+        CURRENT=$(cat /proc/cmdline | sed 's/BOOT_IMAGE=[^ ]* //')
     else
-        BASE_CMDLINE=$(cat "$CMDLINE_FILE")
-        echo "• Usando cmdline existente como base"
+        CURRENT=""
     fi
     
-    # Limpar parâmetros ZSWAP antigos
-    CLEAN_CMDLINE=$(echo "$BASE_CMDLINE" | sed 's/ zswap[^ ]*//g')
+    # Remover parâmetros zswap antigos
+    CLEAN=$(echo "$CURRENT" | sed 's/ zswap[^ ]*//g')
     
-    # Adicionar parâmetros ZSWAP novos
-    NEW_CMDLINE="$CLEAN_CMDLINE"
-    NEW_CMDLINE="$NEW_CMDLINE zswap.enabled=1"
-    NEW_CMDLINE="$NEW_CMDLINE zswap.compressor=${COMPRESSOR}"
-    NEW_CMDLINE="$NEW_CMDLINE zswap.zpool=${ZPOOL}"
-    NEW_CMDLINE="$NEW_CMDLINE zswap.max_pool_percent=${ZSWAP_PERCENT}"
+    # Adicionar novos parâmetros zswap
+    NEW="$CLEAN"
+    NEW="$NEW zswap.enabled=1"
+    NEW="$NEW zswap.compressor=${COMPRESSOR}"
+    NEW="$NEW zswap.zpool=${ZPOOL}"
+    NEW="$NEW zswap.max_pool_percent=${ZSWAP_PERCENT}"
     
-    # Remover espaços extras
-    NEW_CMDLINE=$(echo "$NEW_CMDLINE" | sed 's/  */ /g' | sed 's/^ //' | sed 's/ $//')
+    # Limpar espaços
+    NEW=$(echo "$NEW" | sed 's/  */ /g' | sed 's/^ //' | sed 's/ $//')
     
     # Salvar
-    echo "$NEW_CMDLINE" | sudo tee "$CMDLINE_FILE" > /dev/null
+    echo "$NEW" | sudo tee "$CMDLINE_FILE" > /dev/null
     
-    echo "• /etc/kernel/cmdline atualizado:"
-    echo "  $NEW_CMDLINE"
+    echo "✅ /etc/kernel/cmdline atualizado"
+    echo "   $NEW"
     
-    # 5. CRIAR CONFIGURAÇÃO DO MÓDULO
+    # 6. RECRIAR INITRAMFS
     echo ""
-    echo "📁 Criando configuração persistente..."
-    
-    sudo tee /etc/modprobe.d/zswap.conf > /dev/null << EOF
-# Configuração ZSWAP automática
-# Gerado em: $(date)
-# RAM: ${RAM_GB}GB | CPU: ${COMPRESSOR}
-
-options zswap enabled=1
-options zswap compressor=${COMPRESSOR}
-options zswap zpool=${ZPOOL}
-options zswap max_pool_percent=${ZSWAP_PERCENT}
-options zswap same_filled_pages_enabled=Y
-EOF
-    
-    echo "✅ /etc/modprobe.d/zswap.conf criado"
-    
-    # 6. RECRIAR KERNEL UNIFICADO
-    echo ""
-    echo "🐧 Recriando initramfs..."
+    echo "🔧 Executando mkinitcpio -P..."
     
     if command -v mkinitcpio &> /dev/null; then
         sudo mkinitcpio -P
-        echo "✓ mkinitcpio -P executado"
+        echo "✓ Concluído"
     else
         echo "⚠️  mkinitcpio não encontrado"
-        echo "  Execute manualmente quando possível"
     fi
     
-    # 7. ATIVAR ZSWAP IMEDIATAMENTE
-    echo ""
-    echo "🚀 Ativando ZSWAP agora..."
-    
-    # Descarregar módulo se já estiver carregado
-    if lsmod | grep -q zswap; then
-        sudo modprobe -r zswap 2>/dev/null
-        sleep 1
-    fi
-    
-    # Carregar novo módulo
-    sudo modprobe zswap
-    
-    # 8. VERIFICAR
-    echo ""
-    echo "🔍 Verificando configuração..."
-    
-    sleep 2
-    
-    if [ -f "/sys/module/zswap/parameters/enabled" ]; then
-        ENABLED=$(cat /sys/module/zswap/parameters/enabled)
-        COM=$(cat /sys/module/zswap/parameters/compressor 2>/dev/null || echo "N/A")
-        POOL=$(cat /sys/module/zswap/parameters/max_pool_percent 2>/dev/null || echo "N/A")
-        
-        echo "• ZSWAP ativado: ${ENABLED}"
-        echo "• Compressor: ${COM}"
-        echo "• Pool size: ${POOL}%"
-        
-        if [ "$ENABLED" = "Y" ] || [ "$ENABLED" = "1" ]; then
-            echo "  ✅ Sucesso! ZSWAP funcionando."
-        else
-            echo "  ⚠️  ZSWAP não ativado - reinicie."
-        fi
-    else
-        echo "• Módulo zswap não carregado ainda"
-    fi
-    
-    # 9. RESUMO FINAL
+    # 7. RESUMO
     echo ""
     echo "========================================"
     echo "🎯 CONFIGURAÇÃO APLICADA"
     echo "========================================"
-    echo "• RAM: ${RAM_GB}GB"
-    echo "• ZSWAP: ${ZSWAP_PERCENT}% (${ZSWAP_MB}MB)"
+    echo "• ZSWAP: ${ZSWAP_PERCENT}% da RAM"
+    echo "• Tamanho: ${ZSWAP_MB}MB"
     echo "• Compressor: ${COMPRESSOR}"
     echo "• Zpool: ${ZPOOL}"
     echo ""
-    echo "📊 Memória atual:"
-    free -h
+    echo "⚠️  REINICIE para ativar: sudo reboot"
     echo ""
-    echo "🔧 Próximos passos:"
-    echo "1. Reinicie para efeito completo: sudo reboot"
-    echo "2. Verifique: cat /proc/cmdline | grep zswap"
-    echo "3. Monitor: watch -n 2 'free -h'"
+    echo "🔍 Após reiniciar, verifique com:"
+    echo "   cat /proc/cmdline | grep zswap"
+    echo "   cat /sys/module/zswap/parameters/enabled"
     echo "========================================"
 }
 
-# ========== FUNÇÃO DE VERIFICAÇÃO ==========
+# ========== VERIFICAR ==========
 check() {
-    echo "🔍 Verificando configuração ZSWAP atual..."
+    echo "🔍 Verificando configuração ZSWAP..."
     echo ""
     
-    echo "1. Parâmetros do kernel:"
+    echo "1. /etc/kernel/cmdline:"
     if [ -f "/etc/kernel/cmdline" ]; then
-        CMDLINE=$(cat /etc/kernel/cmdline)
-        echo "   /etc/kernel/cmdline:"
-        echo "   $CMDLINE"
-        
-        # Extrair apenas zswap
+        cat /etc/kernel/cmdline
         echo ""
-        echo "   Parâmetros ZSWAP:"
-        echo "$CMDLINE" | grep -o "zswap[^ ]*" | while read param; do
-            echo "   • $param"
-        done || echo "   Nenhum parâmetro zswap encontrado"
+        echo "Parâmetros ZSWAP:"
+        if grep -q "zswap" /etc/kernel/cmdline; then
+            grep -o "zswap[^ ]*" /etc/kernel/cmdline
+        else
+            echo "Nenhum"
+        fi
     else
-        echo "   ❌ /etc/kernel/cmdline não existe"
+        echo "Arquivo não existe"
     fi
     
     echo ""
-    echo "2. Módulo em execução:"
-    if lsmod | grep -q zswap; then
-        echo "   ✅ Módulo zswap carregado"
-        echo ""
-        echo "   Parâmetros atuais:"
+    echo "2. Status atual (após reiniciar):"
+    if [ -d "/sys/module/zswap" ]; then
+        echo "✅ ZSWAP ativo"
+        echo "Parâmetros:"
         for param in /sys/module/zswap/parameters/*; do
-            if [ -f "$param" ]; then
-                name=$(basename $param)
-                value=$(cat $param 2>/dev/null)
-                echo "   • $name = $value"
-            fi
+            [ -f "$param" ] && echo "  $(basename $param)=$(cat $param 2>/dev/null)"
         done
     else
-        echo "   ❌ Módulo zswap não está carregado"
+        echo "❌ ZSWAP não ativo (reinicie se configurou)"
     fi
     
     echo ""
-    echo "3. Configuração persistente:"
-    if [ -f "/etc/modprobe.d/zswap.conf" ]; then
-        echo "   ✅ /etc/modprobe.d/zswap.conf:"
-        cat /etc/modprobe.d/zswap.conf
-    else
-        echo "   ❌ Nenhuma configuração persistente encontrada"
-    fi
-    
-    echo ""
-    echo "4. Status da memória:"
+    echo "3. Memória:"
     free -h
 }
 
-# ========== FUNÇÃO DE REMOÇÃO ==========
+# ========== REMOVER ==========
 remove() {
     echo "🗑️  Removendo ZSWAP..."
-    echo ""
     
-    # 1. Remover do cmdline
     if [ -f "/etc/kernel/cmdline" ]; then
         OLD=$(cat /etc/kernel/cmdline)
-        NEW=$(echo "$OLD" | sed 's/ zswap[^ ]*//g' | sed 's/  */ /g' | sed 's/^ //' | sed 's/ $//')
+        NEW=$(echo "$OLD" | sed 's/ zswap[^ ]*//g' | sed 's/  */ /g')
         echo "$NEW" | sudo tee /etc/kernel/cmdline > /dev/null
-        echo "• Removido de /etc/kernel/cmdline"
+        echo "✅ Removido de /etc/kernel/cmdline"
     fi
     
-    # 2. Remover arquivo de configuração
-    if [ -f "/etc/modprobe.d/zswap.conf" ]; then
-        sudo rm -f /etc/modprobe.d/zswap.conf
-        echo "• Removido /etc/modprobe.d/zswap.conf"
-    fi
-    
-    # 3. Descarregar módulo
-    if lsmod | grep -q zswap; then
-        sudo modprobe -r zswap 2>/dev/null
-        echo "• Módulo zswap descarregado"
-    fi
-    
-    # 4. Recriar initramfs
     if command -v mkinitcpio &> /dev/null; then
         sudo mkinitcpio -P
-        echo "• Initramfs recriado"
+        echo "✅ mkinitcpio -P executado"
     fi
     
     echo ""
-    echo "✅ ZSWAP removido! Reinicie para efeito completo."
+    echo "⚠️  Reinicie: sudo reboot"
 }
 
 # ========== AJUDA ==========
 help() {
-    echo "Uso: sudo zswap-auto-config [comando]"
+    echo "Uso: sudo zswap-config [comando]"
     echo ""
     echo "Comandos:"
-    echo "  (sem comando)    Configurar ZSWAP automaticamente"
-    echo "  check            Verificar configuração atual"
-    echo "  remove           Remover ZSWAP completamente"
-    echo "  help             Mostrar esta ajuda"
+    echo "  (vazio)     Configurar ZSWAP"
+    echo "  check       Verificar"
+    echo "  remove      Remover"
+    echo "  help        Ajuda"
     echo ""
-    echo "Exemplos:"
-    echo "  sudo zswap-auto-config          # Configurar automaticamente"
-    echo "  sudo zswap-auto-config check    # Verificar configuração"
-    echo "  sudo zswap-auto-config remove   # Remover ZSWAP"
-    echo ""
-    echo "Descrição:"
-    echo "  Configura ZSWAP automaticamente baseado na quantidade de RAM"
-    echo "  e tipo de CPU. Apenas edita /etc/kernel/cmdline e executa"
-    echo "  mkinitcpio -P. Nada mais."
+    echo "Exemplo: sudo zswap-config"
 }
 
-# ========== EXECUÇÃO ==========
+# ========== EXECUTAR ==========
 case "${1:-}" in
-    "check")
-        check
-        ;;
-    "remove")
-        remove
-        ;;
-    "help"|"--help"|"-h")
-        help
-        ;;
-    "")
-        main
-        ;;
-    *)
-        echo "❌ Comando desconhecido: $1"
-        echo "   Use: sudo zswap-auto-config help"
-        exit 1
-        ;;
+    "check") check ;;
+    "remove") remove ;;
+    "help"|"-h"|"--help") help ;;
+    "") main ;;
+    *) echo "❌ Comando inválido: $1"; help ;;
 esac
