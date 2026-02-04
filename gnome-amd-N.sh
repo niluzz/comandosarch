@@ -15,7 +15,7 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
-  firefox-i18n-pt-br discord telegram-desktop
+  firefox-i18n-pt-br discord
 
 echo ">>> Mídia e multimídia..."
 sudo pacman -S --needed --noconfirm \
@@ -23,7 +23,7 @@ sudo pacman -S --needed --noconfirm \
   gstreamer gst-plugins-base gst-plugins-good \
   gst-plugins-bad gst-plugins-ugly gst-libav \
   libdvdread libdvdnav libdvdcss \
-  handbrake ffmpegthumbnailer
+  ffmpegthumbnailer
 
 echo ">>> Fontes..."
 sudo pacman -S --needed --noconfirm \
@@ -34,7 +34,6 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
-  qbittorrent newsflash amf-headers dialect \
   gufw thunderbird-i18n-pt-br
 
 echo "Ferramentas de Backup..."
@@ -54,9 +53,7 @@ fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
 paru -S --needed --noconfirm \
-  google-chrome onlyoffice-bin extension-manager \
-  mangojuice phinger-cursors ttf-ms-fonts auto-cpufreq 
-  
+  google-chrome phinger-cursors ttf-ms-fonts auto-cpufreq 
 
 echo ">>> Verificando e ajustando parâmetros do kernel..."
 CMDLINE_FILE="/etc/kernel/cmdline"
