@@ -34,7 +34,8 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
-  gufw thunderbird-i18n-pt-br
+  gufw thunderbird-i18n-pt-br playerctl \
+  expac fastfetch
 
 echo "Ferramentas de Backup..."
 sudo pacman -S --needed --noconfirm \
