@@ -126,7 +126,7 @@ calculate_sizes() {
     
     # 4. ZPOOL
     if [ $RAM_GB -ge 4 ]; then
-        ZPOOL="z3fold"
+        ZPOOL="zsmalloc"
     else
         ZPOOL="zbud"
     fi
