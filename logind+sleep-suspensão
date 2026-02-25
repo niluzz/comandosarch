@@ -28,7 +28,7 @@ HandleLidSwitchExternalPower=suspend
 # ==================================================
 
 # Permite ação mesmo com inibidores do GNOME
-LidSwitchIgnoreInhibited=yes
+LidSwitchIgnoreInhibited=no
 
 # ==================================================
 # BATERIA CRÍTICA (opcional - descomente se quiser)
