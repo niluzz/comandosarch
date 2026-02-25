@@ -34,8 +34,8 @@ LidSwitchIgnoreInhibited=no
 # BATERIA CRÍTICA (opcional - descomente se quiser)
 # ==================================================
 
-HandleBatteryCriticalLevel=15%
-HandleBatteryCriticalAction=poweroff
+#HandleBatteryCriticalLevel=15%
+#HandleBatteryCriticalAction=poweroff
 
 # ==================================================
 #                    INATIVIDADE
@@ -52,16 +52,16 @@ sleep-suspensão
 # ==================================================
 
 AllowSuspend=yes
-AllowHibernation=no
-AllowHybridSleep=no
-AllowSuspendThenHibernate=no
+#AllowHibernation=no
+#AllowHybridSleep=no
+#AllowSuspendThenHibernate=no
 
 # ==================================================
 #        COMPORTAMENTO
 # ==================================================
 
 # Suspensão real (necessária para GPU funcionar bem)
-SuspendState=mem
+#SuspendState=mem
 
 # Tempo em suspensão antes de hibernar (10 minutos)
 #HibernateDelaySec=40s
