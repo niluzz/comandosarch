@@ -8,9 +8,9 @@ echo ">>> Instalando pacotes oficiais..."
 
 echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
-  git zsh base-devel pacman-contrib \
+  git zsh systemd-ukify pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd mesa-utils ibus systemd-ukify
+  fwupd mesa-utils ibus
 
 
 echo ">>> Navegadores e comunicação..."
