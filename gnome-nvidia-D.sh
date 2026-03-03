@@ -14,11 +14,11 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Input methods..."
 sudo pacman -S --needed --noconfirm \
-  ibus dialect
+  ibus
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
-  firefox-i18n-pt-br discord telegram-desktop
+  firefox-i18n-pt-br
 
 echo ">>> Mídia e multimídia..."
 sudo pacman -S --needed --noconfirm \
@@ -30,7 +30,6 @@ sudo pacman -S --needed --noconfirm \
 echo ">>> Drive NVIDIA..."
 sudo pacman -S --needed --noconfirm \
   nvidia-utils nvidia-settings lib32-nvidia-utils \
-  opencl-nvidia
 
 echo ">>> Jellyfin..."
 sudo pacman -S --needed --noconfirm \
@@ -45,10 +44,9 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
-  qbittorrent newsflash amf-headers openrgb \
-  handbrake gufw directx-headers lib32-directx-headers \
-  directx-shader-compiler gamemode
-
+  amf-headers openrgb handbrake \
+  gufw expac fastfetch playerctl
+  
 echo ">>> Ferramentas de Backup..."
 sudo pacman -S --needed --noconfirm \
   btrfs-assistant btrfsmaintenance snapper
@@ -66,31 +64,9 @@ fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
 paru -S --needed --noconfirm \
-  google-chrome onlyoffice-bin extension-manager \
-  mangojuice phinger-cursors protonplus \
+  google-chrome phinger-cursors protonplus \
   ttf-ms-fonts
 
-echo ">>> Configurando variáveis de ambiente em /etc/environment..."
-ENV_FILE="/etc/environment"
-
-# Variáveis para otimização NVIDIA e Wayland
-declare -A env_vars=(
-    ["MOZ_ENABLE_WAYLAND"]="1"
-    ["LIBVA_DRIVER_NAME"]="nvidia" 
-    ["NVD_BACKEND"]="direct"
-    ["FFMPEG_VAAPI"]="1" 
-)
-
-echo ">>> Adicionando otimizações gráficas..."
-
-for var in "${!env_vars[@]}"; do
-    if ! grep -q "^$var=" "$ENV_FILE" 2>/dev/null; then
-        echo "$var=${env_vars[$var]}" | sudo tee -a "$ENV_FILE"
-        echo "✓ Variável '$var' adicionada"
-    else
-        echo "→ Variável '$var' já existe"
-    fi
-done
 
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
