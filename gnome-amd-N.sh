@@ -15,7 +15,7 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
-  firefox-i18n-pt-br discord
+  firefox-i18n-pt-br
 
 echo ">>> Mídia e multimídia..."
 sudo pacman -S --needed --noconfirm \
