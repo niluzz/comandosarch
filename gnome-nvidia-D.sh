@@ -7,10 +7,9 @@ sudo pacman -Syu --noconfirm
 echo ">>> Instalando pacotes oficiais..."
 echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
-  git zsh base-devel pacman-contrib \
+  git zsh systemd-ukify pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd power-profiles-daemon mesa-utils \
-  systemd-ukify
+  fwupd power-profiles-daemon mesa-utils
 
 echo ">>> Input methods..."
 sudo pacman -S --needed --noconfirm \
