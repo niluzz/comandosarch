@@ -80,7 +80,7 @@ if [ ! -f "$CMDLINE_FILE" ]; then
   sudo mkdir -p /etc/kernel
   echo "quiet splash nvidia-drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1" | sudo tee "$CMDLINE_FILE"
 else
-  for param in quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1; do
+  for param in quiet splash nvidia-drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1; do
     if ! grep -qw "$param" "$CMDLINE_FILE"; then
       sudo sed -i "1s|$| $param|" "$CMDLINE_FILE"
       echo "Parâmetro '$param' adicionado ao kernel cmdline."
