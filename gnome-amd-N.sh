@@ -12,7 +12,6 @@ sudo pacman -S --needed --noconfirm \
   file-roller p7zip unrar unzip \
   fwupd mesa-utils ibus base-devel
 
-
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
   firefox-i18n-pt-br
