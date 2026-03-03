@@ -10,7 +10,7 @@ echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
   git zsh systemd-ukify pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd mesa-utils ibus
+  fwupd mesa-utils ibus base-devel
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
@@ -25,7 +25,7 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Drive NVIDIA..."
 sudo pacman -S --needed --noconfirm \
-  nvidia-utils nvidia-settings lib32-nvidia-utils \
+  nvidia-utils nvidia-settings
 
 echo ">>> Jellyfin..."
 sudo pacman -S --needed --noconfirm \
@@ -40,8 +40,8 @@ sudo pacman -S --needed --noconfirm \
 
 echo ">>> Outros..."
 sudo pacman -S --needed --noconfirm \
-  amf-headers openrgb handbrake \
-  gufw expac fastfetch playerctl
+  amf-headers openrgb gufw  \
+  expac fastfetch playerctl
   
 echo ">>> Ferramentas de Backup..."
 sudo pacman -S --needed --noconfirm \
