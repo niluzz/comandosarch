@@ -67,7 +67,6 @@ paru -S --needed --noconfirm \
   google-chrome phinger-cursors protonplus \
   ttf-ms-fonts
 
-
 echo ">>> Verificando e ajustando /etc/mkinitcpio.conf..."
 MKINIT_FILE="/etc/mkinitcpio.conf"
 if ! grep -q "nvidia" "$MKINIT_FILE" 2>/dev/null; then
@@ -83,7 +82,7 @@ CMDLINE_FILE="/etc/kernel/cmdline"
 if [ ! -f "$CMDLINE_FILE" ]; then
   echo "Arquivo $CMDLINE_FILE não encontrado. Criando..."
   sudo mkdir -p /etc/kernel
-  echo "quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1" | sudo tee "$CMDLINE_FILE"
+  echo "quiet splash nvidia-drm.modeset=1 nvidia.NVreg_PreserveVideoMemoryAllocations=1" | sudo tee "$CMDLINE_FILE"
 else
   for param in quiet splash nvidia-drm.modeset=1 nvidia-drm.fbdev=1 iommu=pt nvidia.NVreg_PreserveVideoMemoryAllocations=1; do
     if ! grep -qw "$param" "$CMDLINE_FILE"; then
