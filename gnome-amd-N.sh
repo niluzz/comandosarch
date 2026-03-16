@@ -10,7 +10,8 @@ echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
   git zsh systemd-ukify pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd mesa-utils ibus base-devel
+  fwupd mesa-utils ibus base-devel \
+  tuned-ppd
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
@@ -53,7 +54,7 @@ fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
 paru -S --needed --noconfirm \
-  google-chrome phinger-cursors ttf-ms-fonts auto-cpufreq 
+  google-chrome phinger-cursors ttf-ms-fonts 
 
 echo ">>> Verificando e ajustando parâmetros do kernel..."
 CMDLINE_FILE="/etc/kernel/cmdline"
@@ -73,6 +74,5 @@ fi
 echo ">>> Habilitando serviços..."
 sudo systemctl enable --now fwupd-refresh.timer
 sudo systemctl enable --now bluetooth.service
-sudo systemctl enable --now auto-cpufreq.service
 
 echo ">>> Instalação concluída com sucesso! 🚀"
