@@ -8,7 +8,7 @@ echo
 # PASSO 1 - Instalar pacotes
 echo "[1/5] Instalando pacotes..."
 
-paru -S --noconfirm walker elephant elephant-clipboard elephant-desktopapplications elephant-files elephant-menus elephant-providerlist
+paru -S --noconfirm walker elephant elephant-clipboard elephant-desktopapplications elephant-files elephant-menus elephant-providerlist elephant-websearch
 
 echo
 echo "Pacotes instalados."
