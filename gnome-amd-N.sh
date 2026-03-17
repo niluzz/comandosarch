@@ -11,7 +11,7 @@ sudo pacman -S --needed --noconfirm \
   git zsh systemd-ukify pacman-contrib \
   file-roller p7zip unrar unzip \
   fwupd mesa-utils ibus base-devel \
-  tuned-ppd
+  power-profiles-daemon
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
