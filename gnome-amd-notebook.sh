@@ -10,8 +10,7 @@ echo ">>> Ferramentas básicas..."
 sudo pacman -S --needed --noconfirm \
   git zsh systemd-ukify pacman-contrib \
   file-roller p7zip unrar unzip \
-  fwupd mesa-utils ibus base-devel \
-  power-profiles-daemon
+  fwupd mesa-utils ibus base-devel
 
 echo ">>> Navegadores e comunicação..."
 sudo pacman -S --needed --noconfirm \
