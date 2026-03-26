@@ -52,7 +52,7 @@ fi
 
 echo ">>> Instalando pacotes do AUR com paru..."
 paru -S --needed --noconfirm \
-  google-chrome phinger-cursors ttf-ms-fonts 
+  google-chrome phinger-cursors ttf-ms-fonts auto-cpufreq
 
 echo ">>> Verificando e ajustando parâmetros do kernel..."
 CMDLINE_FILE="/etc/kernel/cmdline"
@@ -72,5 +72,6 @@ fi
 echo ">>> Habilitando serviços..."
 sudo systemctl enable --now fwupd-refresh.timer
 sudo systemctl enable --now bluetooth.service
+sudo systemctl enable --now auto-cpufreq.service
 
 echo ">>> Instalação concluída com sucesso! 🚀"
