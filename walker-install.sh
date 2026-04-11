@@ -93,8 +93,8 @@ window {
 /* Container */
 .box-wrapper {
   box-shadow:
-    0 25px 50px rgba(0, 0, 0, 0.45),
-    0 10px 20px rgba(0, 0, 0, 0.25);
+    0 25px 25px rgba(0, 0, 0, 0.35),
+    0 10px 10px rgba(0, 0, 0, 0.20);
 
   background: alpha(@window_bg_color, 0.75);
   padding: 20px;
