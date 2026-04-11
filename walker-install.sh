@@ -32,6 +32,11 @@ cat > ~/.config/walker/config.toml << 'EOF'
 # Tema
 theme = "default"
 
+[window]
+anchor = "center"
+width = 600
+height = 400
+
 # comportamento
 force_keyboard_focus = true
 close_when_open = true
