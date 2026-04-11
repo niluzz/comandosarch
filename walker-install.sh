@@ -85,13 +85,13 @@ cat > ~/.config/walker/themes/minimal/style.css << 'EOF'
   all: unset;
 }
 
-/* Window */
+/* 🔥 REMOVE FUNDO DA JANELA REAL */
 window {
   background: transparent;
   border-radius: 20px;
 }
 
-/* Container */
+/* 🔥 CONTAINER PRINCIPAL (GLASS + FIX BORDA) */
 .box-wrapper {
   box-shadow:
     0 25px 25px rgba(0, 0, 0, 0.35),
@@ -101,13 +101,22 @@ window {
   padding: 20px;
   border-radius: 20px;
 
+  /* 👇 evita artefatos visuais */
   background-clip: padding-box;
+
+  /* borda glass */
   border: 1px solid alpha(@accent_bg_color, 0.20);
+
+  /* 👇 CORREÇÃO FINAL DO “BICO” */
+  overflow: hidden;
+  
+  /* 💎 CONTORNO PREMIUM (glass elegante) */
+  border: 2px solid rgba(255, 255, 255, 0.12);
 
   overflow: hidden;
 }
 
-/* Input */
+/* INPUT */
 .input {
   caret-color: @theme_fg_color;
   background: alpha(@window_bg_color, 0.6);
@@ -120,25 +129,26 @@ window {
   opacity: 0.5;
 }
 
-/* Lista */
+/* LISTA */
 .list {
   color: @theme_fg_color;
   background: transparent;
 }
 
-/* Itens */
+/* ITENS */
 .item-box {
   border-radius: 10px;
   padding: 10px;
   background: transparent;
 }
 
+/* HOVER / SELEÇÃO */
 child:hover .item-box,
 child:selected .item-box {
   background: alpha(@accent_bg_color, 0.20);
 }
 
-/* Textos */
+/* TEXTOS */
 .item-text {
   font-size: 14px;
 }
@@ -148,13 +158,13 @@ child:selected .item-box {
   opacity: 0.5;
 }
 
-/* Ícones */
+/* ÍCONES */
 .item-image,
 .item-image-text {
   margin-right: 10px;
 }
 
-/* Quick */
+/* QUICK ACTION */
 .item-quick-activation {
   margin-left: 10px;
   background: alpha(@accent_bg_color, 0.20);
@@ -162,14 +172,14 @@ child:selected .item-box {
   padding: 10px;
 }
 
-/* Placeholder */
+/* PLACEHOLDERS */
 .placeholder,
 .elephant-hint {
   color: @theme_fg_color;
   opacity: 0.5;
 }
 
-/* Keybinds */
+/* KEYBINDS */
 .keybinds-wrapper {
   border-top: 1px solid alpha(@window_bg_color, 0.5);
   font-size: 12px;
@@ -182,7 +192,7 @@ child:selected .item-box {
   text-transform: lowercase;
 }
 
-/* Error */
+/* ERRO */
 .error {
   padding: 10px;
   background: @error_bg_color;
@@ -190,7 +200,7 @@ child:selected .item-box {
   border-radius: 5px;
 }
 
-/* Preview */
+/* PREVIEW */
 .preview {
   border: 1px solid alpha(@accent_bg_color, 0.25);
   padding: 10px;
@@ -198,7 +208,7 @@ child:selected .item-box {
   color: @theme_fg_color;
 }
 
-/* Icons */
+/* ÍCONES */
 .normal-icons {
   -gtk-icon-size: 16px;
 }
@@ -207,7 +217,7 @@ child:selected .item-box {
   -gtk-icon-size: 32px;
 }
 
-/* Scroll */
+/* SCROLL */
 scrollbar {
   opacity: 0;
 }
