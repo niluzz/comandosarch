@@ -45,6 +45,7 @@ close_when_open = true
 
 default = [
   "desktopapplications",
+  "menus",
   "runner",
   "files",
   "calc",
