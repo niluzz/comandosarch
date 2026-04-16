@@ -59,9 +59,9 @@ CMDLINE_FILE="/etc/kernel/cmdline"
 if [ ! -f "$CMDLINE_FILE" ]; then
   echo "Arquivo $CMDLINE_FILE não encontrado. Criando..."
   sudo mkdir -p /etc/kernel
-  echo "mem_sleep_default=deep amdgpu.gpu_recovery=1 amdgpu.noretry=0 acpi_osi=Linux quiet splash" | sudo tee "$CMDLINE_FILE"
+  echo "amdgpu.gpu_recovery=1 amdgpu.runpm=0 amd_iommu=off pcie_aspm=off quiet splash" | sudo tee "$CMDLINE_FILE"
 else
-  for param in quiet splash amdgpu.gpu_recovery=1 amdgpu.noretry=0 acpi_osi=Linux; do
+  for param in quiet splash amdgpu.gpu_recovery=1 amdgpu.runpm=0 amd_iommu=off pcie_aspm=off; do
     if ! grep -qw "$param" "$CMDLINE_FILE"; then
       sudo sed -i "1s|$| $param|" "$CMDLINE_FILE"
       echo "Parâmetro '$param' adicionado ao kernel cmdline."
