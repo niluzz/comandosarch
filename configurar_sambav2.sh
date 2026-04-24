@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Script Samba Arch Linux - Versão Blindada
-
 # =========================
-# Verificação de root
+# Verificação root
 # =========================
 if [ "$EUID" -ne 0 ]; then
   echo "Execute com sudo."
@@ -11,97 +9,60 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =========================
-# Função de erro
+# Funções
 # =========================
-verificar_erro() {
-    if [ $? -ne 0 ]; then
-        echo "Erro: $1 falhou!"
-        exit 1
-    fi
+erro() {
+    echo "Erro: $1"
+    exit 1
+}
+
+sanitizar_nome() {
+    echo "$1" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/-/g'
+}
+
+obter_valor_conf() {
+    grep -i "$1" /etc/samba/smb.conf 2>/dev/null | awk -F= '{print $2}' | xargs
 }
 
 # =========================
 # Detectar usuário
 # =========================
 USUARIO=${SUDO_USER:-$(whoami)}
-echo "Usuário detectado: $USUARIO"
+PASTA="/home/$USUARIO/Publico"
 
 # =========================
-# Função sanitizar nome
+# Função instalação
 # =========================
-sanitizar_nome() {
-    echo "$1" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/-/g'
-}
+instalar_samba() {
 
-# =========================
-# Entrada interativa
-# =========================
-echo ""
-echo "===== CONFIGURAÇÃO DE REDE ====="
+echo "Instalando e configurando Samba..."
 
-read -p "Nome do WORKGROUP (padrão: WORKGROUP): " WORKGROUP
+read -p "WORKGROUP (padrão: WORKGROUP): " WORKGROUP
 WORKGROUP=${WORKGROUP:-WORKGROUP}
 WORKGROUP=$(sanitizar_nome "$WORKGROUP")
 
-read -p "Nome do servidor (sem espaços) (padrão: ARCH-SERVER): " NETBIOS
+read -p "Nome do servidor (padrão: ARCH-SERVER): " NETBIOS
 NETBIOS=${NETBIOS:-ARCH-SERVER}
 NETBIOS=$(sanitizar_nome "$NETBIOS")
 
-echo ""
-echo "Configuração final:"
-echo "Workgroup: $WORKGROUP"
-echo "Servidor: $NETBIOS"
-echo ""
+pacman -Syu --noconfirm || erro "Atualização"
+pacman -S --noconfirm samba wsdd avahi inetutils || erro "Pacotes"
 
-# =========================
-# Atualização
-# =========================
-echo "Atualizando sistema..."
-pacman -Syu --noconfirm
-verificar_erro "Atualização"
-
-# =========================
-# Instalar pacotes
-# =========================
-echo "Instalando pacotes..."
-pacman -S --noconfirm samba wsdd avahi inetutils
-verificar_erro "Pacotes"
-
-# =========================
-# Criar pasta
-# =========================
-PASTA="/home/$USUARIO/Publico"
 mkdir -p "$PASTA"
 chmod 775 "$PASTA"
 chown "$USUARIO:$USUARIO" "$PASTA"
 
-# =========================
-# Backup config
-# =========================
 cp /etc/samba/smb.conf /etc/samba/smb.conf.bak 2>/dev/null
 
-# =========================
-# Criar smb.conf
-# =========================
 cat > /etc/samba/smb.conf << EOF
 [global]
    workgroup = $WORKGROUP
    netbios name = $NETBIOS
-   server string = Samba Server
    server role = standalone server
-
-   log file = /var/log/samba/log.%m
-   max log size = 50
-
    dns proxy = no
    unix charset = UTF-8
 
-[homes]
-   browseable = no
-   writable = yes
-
 [ARCH-SHARE]
-   comment = Pasta Compartilhada
    path = $PASTA
    browseable = yes
    writable = yes
@@ -110,75 +71,94 @@ cat > /etc/samba/smb.conf << EOF
    directory mask = 0775
 EOF
 
-verificar_erro "smb.conf"
+testparm -s || erro "Config inválida"
 
-# =========================
-# Validar config
-# =========================
-testparm -s
-verificar_erro "Validação"
-
-# =========================
-# Criar senha Samba
-# =========================
 smbpasswd -a "$USUARIO"
-verificar_erro "Senha Samba"
 
-# =========================
-# Configurar WSDD
-# =========================
 echo "WSDD_PARAMS=\"--workgroup $WORKGROUP --hostname $NETBIOS\"" > /etc/conf.d/wsdd
 
-# =========================
-# Serviços
-# =========================
 systemctl enable smb wsdd avahi-daemon
 systemctl restart smb wsdd avahi-daemon
-verificar_erro "Serviços"
+
+echo "Samba instalado com sucesso!"
+}
 
 # =========================
-# Firewall UFW
+# Função status/config atual
 # =========================
-if command -v ufw >/dev/null 2>&1; then
-    echo "Configurando UFW..."
-    ufw allow 137/udp
-    ufw allow 138/udp
-    ufw allow 139/tcp
-    ufw allow 445/tcp
+mostrar_config() {
+
+if [ ! -f /etc/samba/smb.conf ]; then
+    echo "Samba não configurado."
+    return
 fi
 
-# =========================
-# Firewall firewalld
-# =========================
-if command -v firewall-cmd >/dev/null 2>&1; then
-    echo "Configurando firewalld..."
-    firewall-cmd --permanent --add-service=samba
-    firewall-cmd --reload
-fi
+WORKGROUP=$(obter_valor_conf "workgroup")
+NETBIOS=$(obter_valor_conf "netbios name")
 
-# =========================
-# Obter IP (robusto)
-# =========================
-IP=$(ip route get 1 | awk '{print $7; exit}')
-
-# =========================
-# Status
-# =========================
-systemctl status smb wsdd avahi-daemon --no-pager -l
-
-# =========================
-# Final
-# =========================
 echo ""
-echo "======================================"
-echo " SAMBA CONFIGURADO COM SUCESSO"
-echo "======================================"
-echo "Usuário: $USUARIO"
+echo "===== CONFIGURAÇÃO ATUAL ====="
 echo "Workgroup: $WORKGROUP"
 echo "Servidor: $NETBIOS"
 echo "Pasta: $PASTA"
+echo "=============================="
+}
+
+# =========================
+# Função alterar nomes
+# =========================
+alterar_config() {
+
+if [ ! -f /etc/samba/smb.conf ]; then
+    echo "Samba não está instalado."
+    return
+fi
+
 echo ""
-echo "Acesse no Windows:"
-echo "\\\\$NETBIOS"
-echo "\\\\$IP"
-echo "======================================"
+echo "Alterar configurações:"
+
+read -p "Novo WORKGROUP (enter mantém atual): " NOVO_WG
+read -p "Novo nome do servidor (enter mantém atual): " NOVO_NB
+
+# pegar atuais
+WG_ATUAL=$(obter_valor_conf "workgroup")
+NB_ATUAL=$(obter_valor_conf "netbios name")
+
+NOVO_WG=${NOVO_WG:-$WG_ATUAL}
+NOVO_NB=${NOVO_NB:-$NB_ATUAL}
+
+NOVO_WG=$(sanitizar_nome "$NOVO_WG")
+NOVO_NB=$(sanitizar_nome "$NOVO_NB")
+
+# aplicar alterações
+sed -i "s/^.*workgroup.*/   workgroup = $NOVO_WG/I" /etc/samba/smb.conf
+sed -i "s/^.*netbios name.*/   netbios name = $NOVO_NB/I" /etc/samba/smb.conf
+
+echo "WSDD_PARAMS=\"--workgroup $NOVO_WG --hostname $NOVO_NB\"" > /etc/conf.d/wsdd
+
+systemctl restart smb wsdd
+
+echo "Configuração atualizada com sucesso!"
+}
+
+# =========================
+# MENU
+# =========================
+while true; do
+    echo ""
+    echo "========= MENU SAMBA ========="
+    echo "1) Instalar / Reconfigurar Samba"
+    echo "2) Ver configuração atual"
+    echo "3) Alterar nome da rede/servidor"
+    echo "4) Sair"
+    echo "=============================="
+    read -p "Escolha uma opção: " OP
+
+    case $OP in
+        1) instalar_samba ;;
+        2) mostrar_config ;;
+        3) alterar_config ;;
+        4) exit 0 ;;
+        *) echo "Opção inválida" ;;
+    esac
+done
