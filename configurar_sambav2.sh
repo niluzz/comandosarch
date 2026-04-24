@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Script de configuração do Samba para Arch Linux (Interativo)
+# Script Samba Arch Linux - Versão Blindada
 
 # =========================
 # Verificação de root
 # =========================
 if [ "$EUID" -ne 0 ]; then
-  echo "Por favor, execute como root (sudo)."
+  echo "Execute com sudo."
   exit 1
 fi
 
@@ -21,62 +21,68 @@ verificar_erro() {
 }
 
 # =========================
-# Detectar usuário correto
+# Detectar usuário
 # =========================
 USUARIO=${SUDO_USER:-$(whoami)}
 echo "Usuário detectado: $USUARIO"
 
 # =========================
-# Escolha interativa
+# Função sanitizar nome
+# =========================
+sanitizar_nome() {
+    echo "$1" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/-/g'
+}
+
+# =========================
+# Entrada interativa
 # =========================
 echo ""
-echo "Configuração de rede do Samba:"
-read -p "Digite o nome do WORKGROUP (padrão: WORKGROUP): " WORKGROUP
+echo "===== CONFIGURAÇÃO DE REDE ====="
+
+read -p "Nome do WORKGROUP (padrão: WORKGROUP): " WORKGROUP
 WORKGROUP=${WORKGROUP:-WORKGROUP}
+WORKGROUP=$(sanitizar_nome "$WORKGROUP")
 
-read -p "Digite o nome do servidor (padrão: ARCH-SERVER): " NETBIOS
+read -p "Nome do servidor (sem espaços) (padrão: ARCH-SERVER): " NETBIOS
 NETBIOS=${NETBIOS:-ARCH-SERVER}
+NETBIOS=$(sanitizar_nome "$NETBIOS")
 
 echo ""
-echo "Resumo:"
+echo "Configuração final:"
 echo "Workgroup: $WORKGROUP"
-echo "Nome do servidor: $NETBIOS"
+echo "Servidor: $NETBIOS"
 echo ""
 
 # =========================
-# Atualizar sistema
+# Atualização
 # =========================
-echo "Atualizando o sistema..."
+echo "Atualizando sistema..."
 pacman -Syu --noconfirm
-verificar_erro "Atualização do sistema"
+verificar_erro "Atualização"
 
 # =========================
 # Instalar pacotes
 # =========================
-echo "Instalando Samba e dependências..."
-pacman -S --noconfirm samba wsdd avahi
-verificar_erro "Instalação dos pacotes"
+echo "Instalando pacotes..."
+pacman -S --noconfirm samba wsdd avahi inetutils
+verificar_erro "Pacotes"
 
 # =========================
-# Criar diretório público
+# Criar pasta
 # =========================
-echo "Criando diretório público..."
 PASTA="/home/$USUARIO/Publico"
 mkdir -p "$PASTA"
 chmod 775 "$PASTA"
 chown "$USUARIO:$USUARIO" "$PASTA"
 
 # =========================
-# Backup config antiga
+# Backup config
 # =========================
-echo "Fazendo backup do smb.conf..."
 cp /etc/samba/smb.conf /etc/samba/smb.conf.bak 2>/dev/null
 
 # =========================
 # Criar smb.conf
 # =========================
-echo "Criando novo smb.conf..."
-
 cat > /etc/samba/smb.conf << EOF
 [global]
    workgroup = $WORKGROUP
@@ -91,8 +97,7 @@ cat > /etc/samba/smb.conf << EOF
    unix charset = UTF-8
 
 [homes]
-   comment = Home Directories
-   browsable = no
+   browseable = no
    writable = yes
 
 [ARCH-SHARE]
@@ -100,51 +105,50 @@ cat > /etc/samba/smb.conf << EOF
    path = $PASTA
    browseable = yes
    writable = yes
-   public = yes
+   guest ok = yes
    create mask = 0775
    directory mask = 0775
 EOF
 
-verificar_erro "Criação do smb.conf"
+verificar_erro "smb.conf"
 
 # =========================
 # Validar config
 # =========================
-echo "Validando configuração..."
 testparm -s
-verificar_erro "Validação do smb.conf"
+verificar_erro "Validação"
 
 # =========================
-# Criar senha samba
+# Criar senha Samba
 # =========================
-echo "Configurando senha do Samba para $USUARIO..."
 smbpasswd -a "$USUARIO"
-verificar_erro "Senha do Samba"
+verificar_erro "Senha Samba"
 
 # =========================
 # Configurar WSDD
 # =========================
-echo "Configurando WSDD..."
 echo "WSDD_PARAMS=\"--workgroup $WORKGROUP --hostname $NETBIOS\"" > /etc/conf.d/wsdd
 
 # =========================
-# Habilitar serviços
+# Serviços
 # =========================
-echo "Habilitando serviços..."
 systemctl enable smb wsdd avahi-daemon
 systemctl restart smb wsdd avahi-daemon
-verificar_erro "Inicialização dos serviços"
+verificar_erro "Serviços"
 
 # =========================
-# Firewall (ufw)
+# Firewall UFW
 # =========================
 if command -v ufw >/dev/null 2>&1; then
     echo "Configurando UFW..."
-    ufw allow samba
+    ufw allow 137/udp
+    ufw allow 138/udp
+    ufw allow 139/tcp
+    ufw allow 445/tcp
 fi
 
 # =========================
-# Firewall (firewalld)
+# Firewall firewalld
 # =========================
 if command -v firewall-cmd >/dev/null 2>&1; then
     echo "Configurando firewalld..."
@@ -153,27 +157,28 @@ if command -v firewall-cmd >/dev/null 2>&1; then
 fi
 
 # =========================
-# Status dos serviços
+# Obter IP (robusto)
 # =========================
-echo "Status dos serviços:"
+IP=$(ip route get 1 | awk '{print $7; exit}')
+
+# =========================
+# Status
+# =========================
 systemctl status smb wsdd avahi-daemon --no-pager -l
 
 # =========================
-# Finalização
+# Final
 # =========================
-IP=$(hostname -I | awk '{print $1}')
-
 echo ""
 echo "======================================"
-echo " Samba configurado com sucesso!"
+echo " SAMBA CONFIGURADO COM SUCESSO"
 echo "======================================"
 echo "Usuário: $USUARIO"
 echo "Workgroup: $WORKGROUP"
-echo "Nome do servidor: $NETBIOS"
-echo "Pasta compartilhada: $PASTA"
+echo "Servidor: $NETBIOS"
+echo "Pasta: $PASTA"
 echo ""
 echo "Acesse no Windows:"
 echo "\\\\$NETBIOS"
-echo "ou"
 echo "\\\\$IP"
 echo "======================================"
