@@ -20,7 +20,7 @@ EOF
 # Criando o arquivo zram-generator.conf com os parâmetros
 cat <<EOF > "$ZRAM_CONFIG"
 [zram0]
-zram-size = ram * 0.6
+zram-size = ram * 1.7
 compression-algorithm = zstd
 swap-priority = 100
 fs-type = swap
