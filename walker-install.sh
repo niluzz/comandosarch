@@ -1,252 +1,392 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# =====================================================================
+#  Walker + Elephant no Arch Linux (GNOME) com visual estilo Spotlight
+#
+#  Uso:   bash walker-spotlight.sh
+#  Opções (variáveis de ambiente, todas opcionais):
+#    TEMA_COR=claro            tema claro (padrão: escuro)
+#    KEYBIND='<Super>space'    atalho para abrir o Walker
+#    CENTRALIZAR_JANELAS=0     não ativar "centralizar novas janelas" no GNOME
+#
+#  Exemplo: TEMA_COR=claro KEYBIND='<Control>space' bash walker-spotlight.sh
+#  Não rode como root: o script pede sudo só quando precisa.
+# =====================================================================
 
-echo "======================================="
-echo " Instalando Walker + Elephant no Arch "
-echo "======================================="
-echo
+set -Eeuo pipefail
 
-# PASSO 1 - Instalar pacotes
-echo "[1/6] Instalando pacotes..."
+# ---------------------------------------------------------------------
+# Opções
+# ---------------------------------------------------------------------
+TEMA_COR="${TEMA_COR:-escuro}"
+KEYBIND="${KEYBIND:-<Super>space}"
+CENTRALIZAR_JANELAS="${CENTRALIZAR_JANELAS:-1}"
 
-paru -S --noconfirm walker elephant elephant-clipboard elephant-desktopapplications elephant-files elephant-menus elephant-providerlist elephant-websearch
+# Repositórios oficiais: fd (busca de arquivos), qalc (calculadora), fonte Inter
+PACOTES_REPO=(fd libqalculate inter-font)
 
-echo
-echo "Pacotes instalados."
-echo
+# AUR: Walker + backend Elephant e os provedores que o config realmente usa
+PACOTES_AUR=(
+  walker
+  elephant
+  elephant-desktopapplications
+  elephant-files
+  elephant-calc
+  elephant-runner
+  elephant-websearch
+  elephant-providerlist
+)
 
-# PASSO 2 - Ativar Elephant service
-echo "[2/6] Ativando Elephant service..."
+CFG="$HOME/.config/walker"
+TEMA="spotlight"
+SYSTEMD_USER="$HOME/.config/systemd/user"
+BACKUP="$HOME/.config/walker-backup-$(date +%Y%m%d-%H%M%S)"
 
-elephant service enable
+# ---------------------------------------------------------------------
+# Saída formatada e tratamento de erro
+# ---------------------------------------------------------------------
+azul=$'\e[1;34m'; verde=$'\e[32m'; amarelo=$'\e[33m'; vermelho=$'\e[31m'; reset=$'\e[0m'
+passo() { printf '\n%s[%s]%s %s\n' "$azul" "$1" "$reset" "$2"; }
+ok()    { printf '%s  ✔ %s%s\n' "$verde" "$1" "$reset"; }
+aviso() { printf '%s  ! %s%s\n' "$amarelo" "$1" "$reset"; }
+erro()  { printf '%s  ✖ %s%s\n' "$vermelho" "$1" "$reset" >&2; exit 1; }
+trap 'erro "Falhou na linha $LINENO: $BASH_COMMAND"' ERR
 
-echo
-echo "Elephant service ativado."
-echo
+printf '%s=======================================================%s\n' "$azul" "$reset"
+printf '%s  Walker + Elephant | tema Spotlight (%s)%s\n' "$azul" "$TEMA_COR" "$reset"
+printf '%s=======================================================%s\n' "$azul" "$reset"
 
-# PASSO 3 - Criar config do Walker
-echo "[3/6] Criando configuração do Walker..."
+# ---------------------------------------------------------------------
+# 1. Verificações
+# ---------------------------------------------------------------------
+passo 1/7 "Verificando o sistema"
 
-mkdir -p ~/.config/walker
+(( EUID != 0 ))           || erro "Não rode como root."
+[[ -f /etc/arch-release ]] || erro "Este script é para Arch Linux."
+[[ $TEMA_COR == escuro || $TEMA_COR == claro ]] || erro "TEMA_COR deve ser 'escuro' ou 'claro'."
 
-cat > ~/.config/walker/config.toml << 'EOF'
-# Tema
-theme = "minimal"
+if   command -v paru >/dev/null; then AUR=paru
+elif command -v yay  >/dev/null; then AUR=yay
+else erro "Nenhum helper AUR encontrado. Instale o paru ou o yay."
+fi
+ok "Helper AUR: $AUR"
 
-[window]
-anchor = "center"
-width = 600
-height = 400
+GNOME=0
+[[ ${XDG_CURRENT_DESKTOP:-} == *GNOME* ]] && GNOME=1
+(( GNOME )) && ok "GNOME detectado" || aviso "GNOME não detectado: atalho de teclado não será criado"
+[[ ${XDG_SESSION_TYPE:-} == wayland ]] && ok "Sessão Wayland" || aviso "Sessão não é Wayland (${XDG_SESSION_TYPE:-desconhecida})"
 
-# comportamento
-force_keyboard_focus = true
-close_when_open = true
+# ---------------------------------------------------------------------
+# 2. Pacotes
+# ---------------------------------------------------------------------
+passo 2/7 "Instalando pacotes"
+
+sudo pacman -S --needed --noconfirm "${PACOTES_REPO[@]}"
+# Sem --noconfirm no AUR de propósito: você revisa o PKGBUILD antes de compilar
+"$AUR" -S --needed "${PACOTES_AUR[@]}"
+
+command -v walker   >/dev/null || erro "walker não ficou instalado."
+command -v elephant >/dev/null || erro "elephant não ficou instalado."
+WALKER_BIN="$(command -v walker)"
+ok "Pacotes prontos"
+
+# ---------------------------------------------------------------------
+# 3. Backup + config do Walker
+# ---------------------------------------------------------------------
+passo 3/7 "Criando configuração"
+
+if [[ -d $CFG ]]; then
+  cp -a "$CFG" "$BACKUP"
+  ok "Config anterior salva em $BACKUP"
+fi
+mkdir -p "$CFG/themes/$TEMA"
+
+cat > "$CFG/config.toml" <<EOF
+# Walker | configuração estilo Spotlight
+theme = "$TEMA"
+
+force_keyboard_focus = true    # já abre pronto para digitar
+close_when_open      = true    # atalho abre e fecha (toggle), igual ao Spotlight
+click_to_close       = true    # clicar fora fecha
+selection_wrap       = true    # seta para baixo no último item volta ao topo
+hide_quick_activation = true   # visual limpo, sem números ao lado dos itens
+hide_action_hints     = true   # sem barra de atalhos no rodapé
+
+[placeholders]
+"default" = { input = "Buscar", list = "Nenhum resultado" }
 
 [providers]
+# O que aparece ao digitar sem prefixo: apps, conta rápida e busca na web
+default     = ["desktopapplications", "calc", "websearch"]
+empty       = ["desktopapplications"]
+max_results = 12
 
-default = [
-  "desktopapplications",
-  "menus",
-  "runner",
-  "files",
-  "calc",
-  "websearch"
-]
+# Prefixos (digite o símbolo antes do texto)
+[[providers.prefixes]]
+prefix   = "/"
+provider = "files"
 
-empty = [
-  "desktopapplications"
-]
+[[providers.prefixes]]
+prefix   = ">"
+provider = "runner"
 
-max_results = 30
+[[providers.prefixes]]
+prefix   = "="
+provider = "calc"
 
-runner = ">"
-files = "/"
-calc = "="
-websearch = "?"
+[[providers.prefixes]]
+prefix   = "?"
+provider = "websearch"
+
+[[providers.prefixes]]
+prefix   = ";"
+provider = "providerlist"
 EOF
+ok "config.toml criado"
 
-echo "Configuração criada."
-echo
+# ---------------------------------------------------------------------
+# 4. Tema Spotlight
+# ---------------------------------------------------------------------
+passo 4/7 "Criando tema Spotlight ($TEMA_COR)"
 
-# PASSO 4 - Criar tema minimal
-echo "[4/6] Criando tema minimal..."
+if [[ $TEMA_COR == escuro ]]; then
+  BG='rgba(30, 30, 32, 0.82)';    FG='#f5f5f7'; MUTED='rgba(245, 245, 247, 0.50)'
+  LINE='rgba(255, 255, 255, 0.08)'; BORDER='rgba(255, 255, 255, 0.12)'
+else
+  BG='rgba(246, 246, 248, 0.86)'; FG='#1d1d1f'; MUTED='rgba(29, 29, 31, 0.50)'
+  LINE='rgba(0, 0, 0, 0.08)';     BORDER='rgba(255, 255, 255, 0.70)'
+fi
 
-mkdir -p ~/.config/walker/themes/minimal
+cat > "$CFG/themes/$TEMA/style.css" <<EOF
+/* Walker | tema Spotlight ($TEMA_COR) */
 
-cat > ~/.config/walker/themes/minimal/style.css << 'EOF'
-/* Color definitions */
-@define-color window_bg_color #1f1f28;
-@define-color accent_bg_color #54546d;
-@define-color theme_fg_color #f2ecbc;
-@define-color error_bg_color #C34043;
-@define-color error_fg_color #DCD7BA;
+@define-color sp_bg     $BG;
+@define-color sp_fg     $FG;
+@define-color sp_muted  $MUTED;
+@define-color sp_line   $LINE;
+@define-color sp_border $BORDER;
+@define-color sp_accent #0a84ff;
 
-/* Reset */
 * {
   all: unset;
+  font-family: "Inter", "SF Pro Display", "Cantarell", sans-serif;
 }
 
-/* 🔥 REMOVE FUNDO DA JANELA REAL */
+/* Janela invisível: só o cartão aparece */
 window {
   background: transparent;
-  border-radius: 20px;
 }
 
-/* 🔥 CONTAINER PRINCIPAL (GLASS + FIX BORDA) */
+/* Cartão principal */
 .box-wrapper {
+  min-width: 680px;
+  margin: 28px;                 /* espaço para a sombra não ser cortada */
+  padding: 10px;
+  border-radius: 18px;
+  background: @sp_bg;
+  border: 1px solid @sp_border;
   box-shadow:
-    0 25px 25px rgba(0, 0, 0, 0.35),
-    0 10px 10px rgba(0, 0, 0, 0.20);
-
-  background: alpha(@window_bg_color, 0.75);
-  padding: 20px;
-  border-radius: 20px;
-
-  /* 👇 evita artefatos visuais */
-  background-clip: padding-box;
-
-  /* borda glass */
-  border: 1px solid alpha(@accent_bg_color, 0.20);
-
-  /* 👇 CORREÇÃO FINAL DO “BICO” */
-  overflow: hidden;
-  
-  /* 💎 CONTORNO PREMIUM (glass elegante) */
-  border: 2px solid rgba(255, 255, 255, 0.12);
-
-  overflow: hidden;
+    0 22px 60px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(0, 0, 0, 0.30);
 }
 
-/* INPUT */
+/* Campo de busca grande, como no macOS */
 .input {
-  caret-color: @theme_fg_color;
-  background: alpha(@window_bg_color, 0.6);
-  padding: 10px;
-  color: @theme_fg_color;
-  border-radius: 10px;
+  min-height: 44px;
+  padding: 4px 12px;
+  font-size: 22px;
+  font-weight: 300;
+  color: @sp_fg;
+  caret-color: @sp_accent;
 }
 
 .input placeholder {
-  opacity: 0.5;
+  color: @sp_muted;
 }
 
-/* LISTA */
+/* Resultados separados por uma linha fina */
 .list {
-  color: @theme_fg_color;
-  background: transparent;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid @sp_line;
+  color: @sp_fg;
 }
 
-/* ITENS */
 .item-box {
-  border-radius: 10px;
-  padding: 10px;
-  background: transparent;
+  padding: 7px 10px;
+  border-radius: 9px;
 }
 
-/* HOVER / SELEÇÃO */
-child:hover .item-box,
+child:hover .item-box {
+  background: alpha(@sp_accent, 0.15);
+}
+
+/* Item selecionado em azul, texto branco */
 child:selected .item-box {
-  background: alpha(@accent_bg_color, 0.20);
+  background: @sp_accent;
 }
 
-/* TEXTOS */
+child:selected .item-text {
+  color: #ffffff;
+}
+
+child:selected .item-subtext {
+  color: rgba(255, 255, 255, 0.75);
+}
+
 .item-text {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .item-subtext {
   font-size: 12px;
-  opacity: 0.5;
+  color: @sp_muted;
 }
 
-/* ÍCONES */
 .item-image,
 .item-image-text {
-  margin-right: 10px;
+  margin-right: 12px;
 }
 
-/* QUICK ACTION */
-.item-quick-activation {
-  margin-left: 10px;
-  background: alpha(@accent_bg_color, 0.20);
-  border-radius: 5px;
-  padding: 10px;
-}
+.large-icons  { -gtk-icon-size: 32px; }
+.normal-icons { -gtk-icon-size: 20px; }
 
-/* PLACEHOLDERS */
 .placeholder,
 .elephant-hint {
-  color: @theme_fg_color;
-  opacity: 0.5;
-}
-
-/* KEYBINDS */
-.keybinds-wrapper {
-  border-top: 1px solid alpha(@window_bg_color, 0.5);
-  font-size: 12px;
-  opacity: 0.5;
-  color: @theme_fg_color;
-}
-
-.keybind-bind {
-  font-weight: bold;
-  text-transform: lowercase;
-}
-
-/* ERRO */
-.error {
   padding: 10px;
-  background: @error_bg_color;
-  color: @error_fg_color;
-  border-radius: 5px;
+  font-size: 14px;
+  color: @sp_muted;
 }
 
-/* PREVIEW */
 .preview {
-  border: 1px solid alpha(@accent_bg_color, 0.25);
+  margin-left: 10px;
   padding: 10px;
   border-radius: 10px;
-  color: @theme_fg_color;
+  border: 1px solid @sp_line;
+  color: @sp_fg;
 }
 
-/* ÍCONES */
-.normal-icons {
-  -gtk-icon-size: 16px;
+.error {
+  padding: 10px;
+  border-radius: 8px;
+  background: #c34043;
+  color: #ffffff;
 }
 
-.large-icons {
-  -gtk-icon-size: 32px;
-}
-
-/* SCROLL */
 scrollbar {
   opacity: 0;
 }
 EOF
+ok "Tema criado em $CFG/themes/$TEMA"
 
-echo "Tema minimal criado."
-echo
+# ---------------------------------------------------------------------
+# 5. Serviços (Elephant + Walker via systemd do usuário)
+# ---------------------------------------------------------------------
+passo 5/7 "Configurando serviços"
 
-# PASSO 5 - Criar autostart
-echo "[5/6] Criando autostart..."
+# Elephant: o próprio binário gera e habilita a unit
+elephant service enable
+systemctl --user daemon-reload
+systemctl --user restart elephant.service
+ok "Elephant ativo"
 
-mkdir -p ~/.config/autostart
+# Walker residente em memória: abre instantâneo e reinicia sozinho se cair
+mkdir -p "$SYSTEMD_USER"
+cat > "$SYSTEMD_USER/walker.service" <<EOF
+[Unit]
+Description=Walker launcher (modo serviço)
+PartOf=graphical-session.target
+After=graphical-session.target elephant.service
+Wants=elephant.service
 
-cat > ~/.config/autostart/walker.desktop << 'EOF'
-[Desktop Entry]
-Type=Application
-Name=Walker Service
-Exec=/usr/bin/env GDK_BACKEND=wayland walker --gapplication-service
-X-GNOME-Autostart-enabled=true
+[Service]
+Type=simple
+ExecStart=$WALKER_BIN --gapplication-service
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
 EOF
 
-echo "Autostart criado."
-echo
+# Remove o autostart antigo (do script anterior) para não rodar duplicado
+rm -f "$HOME/.config/autostart/walker.desktop"
 
-# PASSO 6 - Final
-echo "======================================="
-echo " Instalação concluída com sucesso!"
-echo "======================================="
+systemctl --user daemon-reload
+systemctl --user enable walker.service >/dev/null
+systemctl --user restart walker.service
+ok "Walker ativo como serviço"
+
+# ---------------------------------------------------------------------
+# 6. Atalho de teclado e ajustes do GNOME
+# ---------------------------------------------------------------------
+passo 6/7 "Atalho de teclado"
+
+if (( GNOME )); then
+  SCHEMA=org.gnome.settings-daemon.plugins.media-keys
+  KPATH=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/walker/
+
+  # Acrescenta o atalho preservando os que você já tem
+  atuais="$(gsettings get "$SCHEMA" custom-keybindings)"
+  if [[ $atuais != *"$KPATH"* ]]; then
+    if [[ $atuais == "@as []" || $atuais == "[]" ]]; then
+      novo="['$KPATH']"
+    else
+      novo="${atuais%]}, '$KPATH']"
+    fi
+    gsettings set "$SCHEMA" custom-keybindings "$novo"
+  fi
+
+  gsettings set "$SCHEMA.custom-keybinding:$KPATH" name    'Walker'
+  gsettings set "$SCHEMA.custom-keybinding:$KPATH" command 'walker'
+  gsettings set "$SCHEMA.custom-keybinding:$KPATH" binding "$KEYBIND"
+
+  # No GNOME, Super+Espaço troca o layout do teclado por padrão. Liberamos.
+  if [[ $KEYBIND == "<Super>space" ]]; then
+    gsettings set org.gnome.desktop.wm.keybindings switch-input-source          "['XF86Keyboard']"
+    gsettings set org.gnome.desktop.wm.keybindings switch-input-source-backward "['<Shift>XF86Keyboard']"
+    aviso "Super+Espaço deixou de trocar o layout do teclado"
+  fi
+  ok "Atalho $KEYBIND configurado"
+
+  # O GNOME não centraliza janelas novas por padrão; o Spotlight aparece no centro
+  if [[ $CENTRALIZAR_JANELAS == 1 ]]; then
+    gsettings set org.gnome.mutter center-new-windows true
+    ok "Novas janelas abrem centralizadas (vale para todos os apps)"
+  fi
+else
+  aviso "Crie o atalho manualmente no seu ambiente com o comando: walker"
+fi
+
+# ---------------------------------------------------------------------
+# 7. Conferência final
+# ---------------------------------------------------------------------
+passo 7/7 "Conferindo"
+
+falhou=0
+for s in elephant walker; do
+  if systemctl --user is-active --quiet "$s.service"; then
+    ok "$s rodando"
+  else
+    aviso "$s não está ativo. Veja: journalctl --user -u $s -e"
+    falhou=1
+  fi
+done
+
 echo
-echo "Use SUPER + SPACE para abrir o Walker."
-echo "Tema minimal com glass ativado automaticamente."
-echo
+if (( falhou )); then
+  printf '%sInstalação terminou com avisos. Confira os logs acima.%s\n' "$amarelo" "$reset"
+else
+  printf '%s=======================================================%s\n' "$verde" "$reset"
+  printf '%s  Pronto! Aperte %s para abrir.%s\n' "$verde" "$KEYBIND" "$reset"
+  printf '%s=======================================================%s\n' "$verde" "$reset"
+fi
+cat <<'EOF'
+
+  Dicas de uso:
+    digite normal   apps, conta e busca na web
+    /texto          arquivos
+    =2+2            calculadora
+    >comando        rodar comando
+    ?texto          buscar na web
+    ;               listar todos os provedores
+EOF
