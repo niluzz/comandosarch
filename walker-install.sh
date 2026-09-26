@@ -119,6 +119,8 @@ hide_action_hints     = true   # sem barra de atalhos no rodapé
 default     = ["desktopapplications", "calc", "websearch"]
 empty       = ["desktopapplications"]
 max_results = 12
+# Sem painel de pré-visualização: ele alarga a janela e tira do centro no GNOME
+ignore_preview = ["files", "clipboard"]
 
 # Prefixos (digite o símbolo antes do texto)
 [[providers.prefixes]]
