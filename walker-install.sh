@@ -181,14 +181,16 @@ window {
 /* Cartão principal */
 .box-wrapper {
   min-width: 680px;
-  margin: 28px;                 /* espaço para a sombra não ser cortada */
+  /* A sombra precisa caber dentro da margem (deslocamento + desfoque <= margem).
+     Se passar, a janela corta a sombra e aparece um quadrado ao redor. */
+  margin: 40px;
   padding: 10px;
   border-radius: 18px;
   background: @sp_bg;
   border: 1px solid @sp_border;
   box-shadow:
-    0 22px 60px rgba(0, 0, 0, 0.35),
-    0 0 0 0.5px rgba(0, 0, 0, 0.30);
+    0 12px 28px rgba(0, 0, 0, 0.30),
+    0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
 /* Campo de busca grande, como no macOS */
