@@ -3,6 +3,7 @@
 #  Pós-instalação Arch Linux
 #  Uso:  ./pos-instalacao-arch.sh          (abre o menu)
 #        ./pos-instalacao-arch.sh 1 3      (roda direto as opções 1 e 3)
+#  Opções: 1 GNOME AMD Notebook | 2 Zsh | 3 Fontes GNOME | 4 Samba
 #  Rodar como usuário normal (NÃO como root). O script pede sudo quando precisa.
 # =====================================================================
 
@@ -363,6 +364,197 @@ EOF
 }
 
 # =====================================================================
+#  OPÇÃO 4 - SAMBA (compartilhamento de pasta na rede)
+#  Rodar de novo serve para ver e alterar a configuração atual.
+# =====================================================================
+opcao_samba() {
+
+  local USUARIO="$USER"
+  local GRUPO; GRUPO="$(id -gn)"
+  local CONF=/etc/samba/smb.conf
+  local COMPARTILHAMENTO="ARCH-SHARE"
+
+  # Nome no padrão NetBIOS: maiúsculas, sem acento, só letras/números/hífen, até 15 caracteres
+  sanitizar_nome() {
+    local s
+    s=$(printf '%s' "$1" | iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null || printf '%s' "$1")
+    printf '%s' "$s" | tr '[:lower:]' '[:upper:]' \
+      | sed -E 's/[^A-Z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-15 | sed -E 's/-+$//'
+  }
+
+  # Lê um valor do smb.conf ignorando comentários
+  valor_atual() {
+    [[ -f "$CONF" ]] || return 0
+    sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*(.*)$/\1/Ip" "$CONF" | head -n1 | xargs
+  }
+
+  titulo "1. Pacotes"
+  sudo pacman -Syu --needed --noconfirm samba wsdd avahi
+
+  titulo "2. Nomes na rede"
+  local WG_ATUAL NB_ATUAL
+  WG_ATUAL="$(valor_atual workgroup)";      WG_ATUAL="${WG_ATUAL:-WORKGROUP}"
+  NB_ATUAL="$(valor_atual 'netbios name')"; NB_ATUAL="${NB_ATUAL:-ARCH-SERVER}"
+  if [[ -f "$CONF" ]]; then
+    echo "${CINZA}    Configuração atual: workgroup ${B}$WG_ATUAL${R}${CINZA}, servidor ${B}$NB_ATUAL${R}"
+    echo "${CINZA}    Enter mantém o valor atual.${R}"
+  fi
+
+  local WORKGROUP NETBIOS GUEST
+  read -rp "    WORKGROUP [$WG_ATUAL]: " WORKGROUP
+  WORKGROUP="$(sanitizar_nome "${WORKGROUP:-$WG_ATUAL}")"; WORKGROUP="${WORKGROUP:-WORKGROUP}"
+
+  read -rp "    Nome do servidor [$NB_ATUAL]: " NETBIOS
+  NETBIOS="$(sanitizar_nome "${NETBIOS:-$NB_ATUAL}")"; NETBIOS="${NETBIOS:-ARCH-SERVER}"
+
+  read -rp "    Permitir acesso sem senha (convidado)? [S/n]: " GUEST
+  [[ "$GUEST" =~ ^[nN]$ ]] && GUEST=no || GUEST=yes
+
+  ok "Workgroup: $WORKGROUP  |  Servidor: $NETBIOS  |  Convidado: $GUEST"
+
+  titulo "3. Pasta compartilhada"
+  # Usa a pasta Público do GNOME (nome certo no idioma do sistema)
+  local PASTA
+  PASTA="$(xdg-user-dir PUBLICSHARE 2>/dev/null || true)"
+  if [[ -z "$PASTA" || "$PASTA" == "$HOME" ]]; then
+    PASTA="$HOME/Publico"
+  fi
+  mkdir -p "$PASTA"
+  chmod 775 "$PASTA"
+  ok "Pasta: $PASTA"
+
+  titulo "4. Gerando smb.conf"
+  local TMP; TMP="$(mktemp)"
+  local LINHA_GUEST LINHA_USERS=""
+  if [[ $GUEST == yes ]]; then
+    LINHA_GUEST="   map to guest = Bad User"
+  else
+    LINHA_GUEST="   map to guest = Never"
+    LINHA_USERS="   valid users = $USUARIO"
+  fi
+
+  cat > "$TMP" <<EOF
+[global]
+   workgroup = $WORKGROUP
+   netbios name = $NETBIOS
+   server string = Samba %h
+   server role = standalone server
+$LINHA_GUEST
+   dns proxy = no
+   unix charset = UTF-8
+   logging = systemd
+   log level = 1
+
+   # Sem impressoras (evita erros no log)
+   load printers = no
+   printcap name = /dev/null
+   disable spoolss = yes
+
+   # Anúncio no macOS é feito pelo Avahi (evita nome duplicado)
+   multicast dns register = no
+
+   # Compatibilidade com macOS (Finder)
+   vfs objects = catia fruit streams_xattr
+   fruit:metadata = stream
+   fruit:model = MacSamba
+   fruit:veto_appledouble = no
+   fruit:nfs_aces = no
+   fruit:wipe_intentionally_left_blank_rfork = yes
+   fruit:delete_empty_adfiles = yes
+
+[$COMPARTILHAMENTO]
+   comment = Pasta pública de $USUARIO
+   path = $PASTA
+   browseable = yes
+   read only = no
+   guest ok = $GUEST
+$LINHA_USERS
+   # Arquivos gravados pela rede ficam no seu nome (e a pasta pessoal pode continuar 700)
+   force user = $USUARIO
+   force group = $GRUPO
+   create mask = 0664
+   directory mask = 0775
+EOF
+
+  # Valida ANTES de substituir o arquivo atual
+  if ! testparm -s "$TMP" >/dev/null 2>&1; then
+    erro "Configuração gerada é inválida:"
+    testparm -s "$TMP" || true
+    rm -f "$TMP"
+    return 1
+  fi
+  backup "$CONF"
+  sudo install -Dm644 "$TMP" "$CONF"
+  rm -f "$TMP"
+  ok "smb.conf validado e aplicado."
+
+  titulo "5. Senha do Samba"
+  if sudo pdbedit -L -u "$USUARIO" &>/dev/null; then
+    local REDEF
+    read -rp "    Usuário $USUARIO já tem senha no Samba. Redefinir? [s/N]: " REDEF
+    if [[ "$REDEF" =~ ^[sS]$ ]]; then
+      until sudo smbpasswd "$USUARIO"; do aviso "Senhas não conferem. Tente de novo."; done
+    fi
+  else
+    echo "${CINZA}    Crie a senha que será usada para acessar a pasta pela rede.${R}"
+    until sudo smbpasswd -a "$USUARIO"; do aviso "Senhas não conferem. Tente de novo."; done
+  fi
+  sudo smbpasswd -e "$USUARIO" >/dev/null
+  ok "Usuário $USUARIO ativo no Samba."
+
+  titulo "6. Descoberta na rede (Windows e macOS)"
+  backup /etc/conf.d/wsdd
+  echo "WSDD_PARAMS=\"--workgroup $WORKGROUP --hostname $NETBIOS\"" | sudo tee /etc/conf.d/wsdd >/dev/null
+  ok "wsdd configurado (aparece na Rede do Windows)."
+
+  sudo tee /etc/avahi/services/smb.service >/dev/null <<EOF
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name>$NETBIOS</name>
+  <service>
+    <type>_smb._tcp</type>
+    <port>445</port>
+  </service>
+  <service>
+    <type>_device-info._tcp</type>
+    <port>0</port>
+    <txt-record>model=MacSamba</txt-record>
+  </service>
+</service-group>
+EOF
+  ok "Avahi configurado (aparece no Finder do macOS)."
+
+  titulo "7. Firewall"
+  if command -v ufw &>/dev/null && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
+    sudo ufw allow 137,138/udp comment 'Samba NetBIOS' >/dev/null
+    sudo ufw allow 139,445/tcp comment 'Samba'         >/dev/null
+    sudo ufw allow 3702/udp    comment 'wsdd'          >/dev/null
+    sudo ufw allow 5357/tcp    comment 'wsdd'          >/dev/null
+    sudo ufw allow 5353/udp    comment 'mDNS Avahi'    >/dev/null
+    ok "Portas liberadas no UFW."
+  else
+    ok "UFW não está ativo. Nada a liberar."
+  fi
+
+  titulo "8. Serviços"
+  sudo systemctl enable smb nmb wsdd avahi-daemon >/dev/null 2>&1
+  sudo systemctl restart smb nmb wsdd avahi-daemon
+  local s
+  for s in smb nmb wsdd avahi-daemon; do
+    if systemctl is-active --quiet "$s"; then ok "$s ativo"; else erro "$s não iniciou (veja: journalctl -u $s)"; return 1; fi
+  done
+
+  local IP
+  IP="$( (ip -4 -o route get 1.1.1.1 2>/dev/null || true) | sed -nE 's/.* src ([0-9.]+).*/\1/p')"
+  echo
+  echo "${B}    Como acessar:${R}"
+  echo "${CINZA}    macOS:   Finder › Rede › $NETBIOS   ou   smb://${IP:-IP-DO-PC}/$COMPARTILHAMENTO"
+  echo "    Windows: Rede › $NETBIOS          ou   \\\\${IP:-IP-DO-PC}\\$COMPARTILHAMENTO"
+  echo "    Login:   usuário $USUARIO e a senha do Samba${R}"
+}
+
+# =====================================================================
 #  Execução de cada opção
 #  Cada opção roda isolada: se uma falhar, o menu continua funcionando
 #  e mostra a linha exata do erro.
@@ -371,11 +563,13 @@ declare -A NOMES=(
   [1]="GNOME AMD Notebook"
   [2]="Zsh + Oh My Zsh"
   [3]="Melhorar fontes GNOME"
+  [4]="Samba (pasta na rede)"
 )
 declare -A FUNCOES=(
   [1]=opcao_gnome_amd_notebook
   [2]=opcao_zsh
   [3]=opcao_fontes
+  [4]=opcao_samba
 )
 declare -A STATUS=()
 PRECISA_REINICIAR=0
@@ -399,7 +593,7 @@ executar() {
 
   if [[ $rc -eq 0 ]]; then
     STATUS[$n]="${VERDE}✔ concluído${R}"
-    PRECISA_REINICIAR=1
+    [[ $n != 4 ]] && PRECISA_REINICIAR=1
     echo; ok "${B}${NOMES[$n]} concluído com sucesso! 🚀${R}"
   else
     STATUS[$n]="${VERMELHO}✖ falhou${R}"
@@ -421,7 +615,7 @@ menu() {
   echo "   ${AZUL}╰${LINHA}╯${R}"
   echo
   local n
-  for n in 1 2 3; do
+  for n in 1 2 3 4; do
     printf "     ${B}${CIANO}%s${R}  %-24s %s\n" "$n" "${NOMES[$n]}" "${STATUS[$n]:-${D}pendente${R}}"
   done
   echo
@@ -464,7 +658,7 @@ while true; do
         echo "   Até mais! 👋"
         exit 0
         ;;
-      1|2|3) executar "$op" ;;
+      1|2|3|4) executar "$op" ;;
       *) aviso "Opção inválida: $op" ;;
     esac
   done
